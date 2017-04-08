@@ -18,6 +18,21 @@ library(lubridate)
 
 
 # ***************************************************************************
+#                   PROCs ----
+# ***************************************************************************
+nweek <- function(x, format="%Y-%m-%d", origin){
+  if(missing(origin)){
+    as.integer(format(strptime(x, format=format), "%W"))
+  }else{
+    x <- as.Date(x, format=format)
+    o <- as.Date(origin, format=format)
+    w <- as.integer(format(strptime(x, format=format), "%w"))
+    2 + as.integer(x - o - w) %/% 7
+  }
+}
+
+
+# ***************************************************************************
 #                   LOAD DATA ----
 # ***************************************************************************
 ce_data <- read.csv('../input/ConsumerElectronics.csv',stringsAsFactors = FALSE)
@@ -50,8 +65,13 @@ ce_data <- cbind(ce_data[,-c(5,6,17,18)],
 #                   Feature Engineering ----
 # ***************************************************************************
 
-# create week
-ce_data$week <- week(ce_data$order_date)   
+# create week,  week numbers start from min 'order date'
+dates <- as.Date(
+            gsub(" .*","",ce_data$order_date)
+          )
+min_date <- min(dates)
+ce_data$week <- nweek(dates,origin = min_date)
+
 
 
 # ***************************************************************************
