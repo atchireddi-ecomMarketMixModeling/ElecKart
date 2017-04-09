@@ -42,7 +42,7 @@ str(ce_data)
 atchircUtils::naSummary(ce_data)
 
 # ***************************************************************************
-#                   DATA PREPARATION ----
+#                   DATA CLEANING ----
 # ***************************************************************************
 
 head(ce_data)
@@ -52,13 +52,23 @@ ce_data <- ce_data[,-c(9,10)]   # Omit 'deliverybday' & 'deliverycdays'
 
 ce_data <- na.omit(ce_data)   # 4904 missing values, can be ignored
 
+
+# . . . .   Outlier Treatment ----
+# Remove orders before July'15 and after June'16
+ce_data <- ce_data[ce_data$order_date>as.Date('2015-6-30'),]
+ce_data <- ce_data[ce_data$order_date<as.Date('2016-7-1'),]
+
 # . . . .   Correct Data Types ----
 
 # 'order_id', 'order_item_id', 'cust_id', 'pincode' are qualitative data
 #  having numeric values, let's convert them to character type
 
-ce_data <- cbind(ce_data[,-c(5,6,17,18)],
-           sapply(ce_data[,c(5,6,17,18)],as.character) )   # operate on interested columns
+ce_data <- cbind(ce_data[,-c(5,6,11,12)],
+           sapply(ce_data[,c(5,6,11,12)],as.character) )   # operate on interested columns
+
+# gmv & mrp make non-zero
+ce_data$gm <- ce_data$gmv+1
+ce_data$product_mrp <- ce_data$product_mrp+1
 
 
 # ***************************************************************************
@@ -72,11 +82,32 @@ dates <- as.Date(
 min_date <- min(dates)
 ce_data$week <- nweek(dates,origin = min_date)
 
+# compute discount gmv
+ce_data$discount_gmv <- as.integer(ce_data$gmv/ce_data$units)
+
+# discount
+ce_data$discount  <- 100-(ce_data$discount_gmv*100/ce_data$product_mrp)
+
+
+# ***************************************************************************
+#                   DATA PREPARATION ----
+# ***************************************************************************
+
+# Create subset for categories 'CameraAccessory', 'HomeAudio', 'GamingAccesory'
+camera_accessory_data <- subset(ce_data, product_analytic_sub_category=="CameraAccessory")
+home_audio_data       <- subset(ce_data, product_analytic_sub_category=="HomeAudio")
+gaming_accessory_data <- subset(ce_data, product_analytic_sub_category=="GamingAccessory")
 
 
 # ***************************************************************************
 #                   Save CLEAN DATA ----
 # ***************************************************************************
+
+write.csv(ce_data, '../intrim/ConsumeElectronics.csv')
+write.csv(camera_accessory_data, '../intrim/CameraAccesory.csv')
+write.csv(home_audio_data, '../intrim/HomeAudio.csv')
+write.csv(gaming_accessory_data, '../intrim/GamingAccessory.csv')
+
 
 
 
@@ -89,9 +120,15 @@ ce_data$week <- nweek(dates,origin = min_date)
 #     6. which day to be considered start of week
 #     7. Few More Insights in product list Tab
 #     8. Elaboration on Media Investment
-
-
-
+#     9. product details are given in order dataset, 
+#           why aditional documentation,
+#    10. How to ratio NPS & media spend to weekly
+#    11. gmv vs mrp vs units. ( is gmv gt/lt mrp)
+#    12. product_mrp is zero..??
+#    
+#    
+#    
+#    
 # Data Augmentation : 
 #     1. Derive day
 #     2. Derive week
