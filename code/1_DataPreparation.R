@@ -15,7 +15,7 @@
 #                   LOAD LIBRARY ----
 # ***************************************************************************
 library(lubridate)
-
+library(dplyr)
 
 # ***************************************************************************
 #                   PROCs ----
@@ -67,46 +67,77 @@ ce_data <- cbind(ce_data[,-c(5,6,11,12)],
            sapply(ce_data[,c(5,6,11,12)],as.character) )   # operate on interested columns
 
 # gmv & mrp make non-zero
-ce_data$gm <- ce_data$gmv+1
+ce_data$gmv <- ce_data$gmv+1
 ce_data$product_mrp <- ce_data$product_mrp+1
 
 
 # ***************************************************************************
-#                   Feature Engineering ----
+#                   FEATURE ENGINEERING ----
 # ***************************************************************************
 
 # create week,  week numbers start from min 'order date'
 dates <- as.Date(
             gsub(" .*","",ce_data$order_date)
           )
-min_date <- min(dates)
-ce_data$week <- nweek(dates,origin = min_date)
+ 
+ce_data$week <- atchircUtils::nweek(dates,origin = as.Date("2015-07-01"))
+
+# replace spaces
+ce_data$product_analytic_vertical <- gsub(" +","",ce_data$product_analytic_vertical)
 
 # compute discount gmv
 ce_data$discount_gmv <- as.integer(ce_data$gmv/ce_data$units)
 
 # discount
-ce_data$discount  <- 100-(ce_data$discount_gmv*100/ce_data$product_mrp)
+ce_data$discount  <- 100.0-(ce_data$discount_gmv*100/ce_data$product_mrp)
+
+
+
+# ***************************************************************************
+#                   WEEKLY DATA AGGREGATION ----
+# ***************************************************************************
+
+# Drop 'fsn_id', 'order_data', 'Year', 'Month', 'sl_fact.order_type',  
+#  'order_id', 'order_item_id', 'cust_id', 'pincode', 
+
+ce_data <- ce_data[,-c(1,2,3,7,9,15,16,17,18,20)]
+
+str(ce_data)
+
+ce_data_weekly <-  ce_data %>% 
+                      group_by(product_analytic_category,
+                               product_analytic_sub_category,
+                               product_analytic_vertical,
+                               Month,
+                               week) %>% 
+                      summarize(gmv=sum(gmv), 
+                                product_mrp=mean(product_mrp), 
+                                units=sum(units), 
+                                sla=mean(sla), 
+                                procurement_sla=mean(product_procurement_sla))
+
+str(ce_data_weekly)
+
 
 
 # ***************************************************************************
 #                   DATA PREPARATION ----
 # ***************************************************************************
 
-# Create subset for categories 'CameraAccessory', 'HomeAudio', 'GamingAccesory'
-camera_accessory_data <- subset(ce_data, product_analytic_sub_category=="CameraAccessory")
-home_audio_data       <- subset(ce_data, product_analytic_sub_category=="HomeAudio")
-gaming_accessory_data <- subset(ce_data, product_analytic_sub_category=="GamingAccessory")
-
-
-# ***************************************************************************
-#                   Save CLEAN DATA ----
-# ***************************************************************************
-
-write.csv(ce_data, '../intrim/ConsumeElectronics.csv')
-write.csv(camera_accessory_data, '../intrim/CameraAccesory.csv')
-write.csv(home_audio_data, '../intrim/HomeAudio.csv')
-write.csv(gaming_accessory_data, '../intrim/GamingAccessory.csv')
+# # Create subset for categories 'CameraAccessory', 'HomeAudio', 'GamingAccesory'
+# camera_accessory_data <- subset(ce_data, product_analytic_sub_category=="CameraAccessory")
+# home_audio_data       <- subset(ce_data, product_analytic_sub_category=="HomeAudio")
+# gaming_accessory_data <- subset(ce_data, product_analytic_sub_category=="GamingAccessory")
+# 
+# 
+# # ***************************************************************************
+# #                   Save CLEAN DATA ----
+# # ***************************************************************************
+# 
+write.csv(ce_data, '../intrim/ConsumeElectronics.csv', row.names = FALSE)
+# write.csv(camera_accessory_data, '../intrim/CameraAccesory.csv')
+# write.csv(home_audio_data, '../intrim/HomeAudio.csv')
+# write.csv(gaming_accessory_data, '../intrim/GamingAccessory.csv')
 
 
 

@@ -9,7 +9,7 @@
 #             
 # ***************************************************************************
 
-```{r warning=FALSE, message=FALSE}
+#```{r warning=FALSE, message=FALSE}
     
 # ***************************************************************************
 #                   LOAD LIRRARY ----
@@ -62,13 +62,12 @@ mediaInvestment_data[is.na(mediaInvestment_data)] <- 0   # zero investment
 # . . . .   SPecialSale ----
 str(specialSale_data)
 
-specialSale_data$SaleOccasion <- as.factor(specialSale_data$SaleOccasion)
-specialSale_data$Day          <- as.Date(specialSale_data$Day, format = "%d/%m/%Y")
+specialSale_data$Day          <- as.Date(specialSale_data$Day, format = "%m/%d/%Y")
+specialSale_data$week <- atchircUtils::nweek(specialSale_data$Day,origin = as.Date("2015-07-01"))
+
 
 # . . . .   Monthly NPS ----
 str(monthlyNPS_data)
-
-monthlyNPS_data$Month <- as.Date(monthlyNPS_data$Month, format = "%m/%d/%Y")
 
 
 
@@ -116,6 +115,36 @@ plt + labs(title="Marketing Spend Breakdown")
 plot(monthlyNPS_data,main="NPS")  
 lines(monthlyNPS_data,main="NPS")  
 
+# ***************************************************************************
+#                   FEATURE ENGINEERING ----
+# ***************************************************************************
+
+# . . . .   Product List ----
+
+# . . . . . . . .  KPI : Type of product ----
+# Based on # of items sold, categorize items either Fast moving, rare moving
+
+productList_data$productSales <- "rareMoving"
+productList_data[productList_data$Percent>2,'productSales'] <- "MediumMoving"
+productList_data[productList_data$Percent>5,'productSales'] <- "FastMoving"
 
 
-```
+str(productList_data)
+str(mediaInvestment_data)
+str(specialSale_data)
+str(monthlyNPS_data)
+
+
+# ***************************************************************************
+#                   Save Data ----
+# ***************************************************************************
+
+write.csv(productList_data,'../intrim/productList.csv', row.names = FALSE)
+write.csv(mediaInvestment_data,'../intrim/mediaInvestment.csv', row.names = FALSE)
+write.csv(specialSale_data,'../intrim/specialSale.csv', row.names = FALSE)
+write.csv(monthlyNPS_data,'../intrim/monthlyNPS.csv', row.names = FALSE)
+
+
+
+#```
+
