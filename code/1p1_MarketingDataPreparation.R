@@ -15,6 +15,7 @@
 #                   LOAD LIRRARY ----
 # ***************************************************************************
 library(ggplot2)
+source('atchircUtils.R')
 
 
 # ***************************************************************************
@@ -47,7 +48,7 @@ monthlyNPS_data       <-
 
 # . . . .   ProductList ----
 str(productList_data)
-atchircUtils::naSummary(productList_data)
+naSummary(productList_data)
 productList_data <- na.omit(productList_data)
 
 # . . . . . . . .  Correct Data types ----
@@ -63,7 +64,7 @@ mediaInvestment_data[is.na(mediaInvestment_data)] <- 0   # zero investment
 str(specialSale_data)
 
 specialSale_data$Day          <- as.Date(specialSale_data$Day, format = "%m/%d/%Y")
-specialSale_data$week <- atchircUtils::nweek(specialSale_data$Day,origin = as.Date("2015-07-01"))
+specialSale_data$week <- nweek(specialSale_data$Day,origin = as.Date("2015-07-01"))
 
 
 # . . . .   Monthly NPS ----

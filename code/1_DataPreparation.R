@@ -9,13 +9,14 @@
 #             
 # ***************************************************************************
 
-```{r warning=FALSE, message=FALSE}
+# ```{r warning=FALSE, message=FALSE}
     
 # ***************************************************************************
 #                   LOAD LIBRARY ----
 # ***************************************************************************
 library(lubridate)
 library(dplyr)
+source('atchircUtils.R')
 
 # ***************************************************************************
 #                   PROCs ----
@@ -39,7 +40,7 @@ ce_data <- read.csv('../input/ConsumerElectronics.csv',stringsAsFactors = FALSE)
 
 str(ce_data)
 
-atchircUtils::naSummary(ce_data)
+naSummary(ce_data)
 
 # ***************************************************************************
 #                   DATA CLEANING ----
@@ -80,7 +81,7 @@ dates <- as.Date(
             gsub(" .*","",ce_data$order_date)
           )
  
-ce_data$week <- atchircUtils::nweek(dates,origin = as.Date("2015-07-01"))
+ce_data$week <- nweek(dates,origin = as.Date("2015-07-01"))
 
 # replace spaces
 ce_data$product_analytic_vertical <- gsub(" +","",ce_data$product_analytic_vertical)
@@ -169,5 +170,5 @@ write.csv(ce_data, '../intrim/ConsumeElectronics.csv', row.names = FALSE)
 
 
     
-```
+# ```
 
