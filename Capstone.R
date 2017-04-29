@@ -39,7 +39,8 @@ nweek <- function(x, format="%Y-%m-%d", origin){
 # ***************************************************************************
 #                   LOAD DATA ---- Transaction Data
 # ***************************************************************************
-setwd("~/Analytics Course - Upgrad/Capstone Project/ElectKart/Input")
+# Make sure you are in current directory as in R-file is in.
+setwd("~/Analytics Course - Upgrad/Capstone Project/ElecKart")   # can you change this path as relative to working directory and 
 ce_data <- read.csv('ConsumerElectronics.csv',stringsAsFactors = FALSE)
 
 str(ce_data)
