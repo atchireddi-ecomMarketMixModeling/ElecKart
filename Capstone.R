@@ -4,6 +4,22 @@
 library(lubridate)
 library(dplyr)
 library(ggplot2)
+library(MASS)
+library(car)
+
+
+
+# ok copied these...now how yo push these ?
+
+# here is the manthr...
+#  git status  tell me which are new files and which are modified files. 
+#  git pull
+#  git add <file name for new files>
+#  git commit <file name (or) *(this is dangerous)> I do selective commit for each file
+#   git push.
+# for all these steps, I open shell from tools
+
+# lets commit modified files for now..
 
 # ***************************************************************************
 #                   PROCs ----
@@ -125,6 +141,8 @@ str(specialSale_data)
 specialSale_data$Date          <- as.Date(specialSale_data$Date, format = "%m/%d/%Y")
 specialSale_data$week <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
 summary(specialSale_data)
+unique(specialSale_data$week)
+specialSale_data<- specialSale_data[!duplicated(specialSale_data$week),]      #Subsetting unique holiday weeks
 
 
 # . . . .   Monthly NPS ----
@@ -132,21 +150,68 @@ str(monthlyNPS_data)
 monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
 monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
 
+# ***************************************************************************
+#                   WEEKLY DATA AGGREGATION ----
+# ***************************************************************************
+ce_data_weekly <-  ce_data %>% 
+  group_by(product_analytic_category,
+           product_analytic_sub_category,
+           product_analytic_vertical,
+           Month,
+           week) %>% 
+  summarize(gmv=sum(gmv), 
+            product_mrp=sum(product_mrp), 
+            units=sum(units),
+            discount=sum(discount),
+            sla=mean(sla), 
+            procurement_sla=mean(product_procurement_sla))
+
 
 # ***************************************************************************
 #                   MERGING DATA ----
 # ***************************************************************************
 
+
 # . . . .   Merge MediaInvestment & NPS ----
-media_nps_data <- merge(mediaInvestment_data, monthlyNPS_data[,-1], by = 'Month', all.x = TRUE)
+media_nps <- merge(mediaInvestment_data, monthlyNPS_data[,-1], by = 'Month', all.x = TRUE)
 # . . . .   Make the data daily ----
-media_nps_data <- cbind(Month=media_nps_data[,c(1)],
-                        media_nps_data[,-c(1,2)]/30.42)
+media_nps <- cbind(Month=media_nps[,c(1)],
+                   media_nps[,-c(1,2)]/4.30)
 
 # . . . .   Merge Sales & SaleDays
-data <- merge(ce_data, specialSale_data[,-3], by.x ='order_date', by.y = 'Date', all.x = TRUE)
+data <- merge(ce_data_weekly, specialSale_data[,-1], by = 'week', all.x = TRUE)
 data$Sales.Name[is.na(data$Sales.Name)] <- "No sale"
 
+
 #. . . .   Merge Data & Media_NPS
-data <- merge(data, media_nps_data, by = 'Month', all.x = TRUE)
-summary(data)
+data <- merge(data, media_nps, by = 'Month', all.x = TRUE)
+
+# Converting the varible type into 'factor'
+data$Month <- as.factor(data$Month)
+data$week <- as.factor(data$week)
+data$product_analytic_category <- as.factor(data$product_analytic_category)
+data$product_analytic_sub_category <- as.factor(data$product_analytic_sub_category)
+data$product_analytic_vertical <- as.factor(data$product_analytic_category)
+# Discount on Products
+data$discount <- ((data$product_mrp - data$gmv)/(data$product_mrp) * 100)
+data$Holiday.Sale <- ifelse(data$Sales.Name == "No Sale", 0, 1)
+
+# ***************************************************************************
+#           CREATE A NEW DATASET WITH ONLY THE IMP VARIABLES ----
+# ***************************************************************************
+
+write.csv(data, file = "eleckart.csv",row.names=FALSE)
+
+
+# ***************************************************************************
+#                        LINEAR MODEL ----
+# ***************************************************************************
+
+indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
+train=data[indices,]
+test=data[-indices,]
+
+#Modelling the Advertising Effects
+model_1 <- lm(units~ .,data=eleckart)
+summary(model_1)
+vif(model_1)
