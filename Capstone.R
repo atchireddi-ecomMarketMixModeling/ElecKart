@@ -9,17 +9,7 @@ library(car)
 
 
 
-# ok copied these...now how yo push these ?
 
-# here is the manthr...
-#  git status  tell me which are new files and which are modified files. 
-#  git pull
-#  git add <file name for new files>
-#  git commit <file name (or) *(this is dangerous)> I do selective commit for each file
-#   git push.
-# for all these steps, I open shell from tools
-
-# lets commit modified files for now..
 
 # ***************************************************************************
 #                   PROCs ----
@@ -39,7 +29,8 @@ nweek <- function(x, format="%Y-%m-%d", origin){
 # ***************************************************************************
 #                   LOAD DATA ---- Transaction Data
 # ***************************************************************************
-# Make sure you are in current directory as in R-file is in.
+# Make sure you are in current directory as in R-file is in. Should I do a commit?yes..
+
 setwd("~/Analytics Course - Upgrad/Capstone Project/ElecKart")   # can you change this path as relative to working directory and 
 ce_data <- read.csv('ConsumerElectronics.csv',stringsAsFactors = FALSE)
 
@@ -202,11 +193,15 @@ data$Holiday.Sale <- ifelse(data$Sales.Name == "No Sale", 0, 1)
 # ***************************************************************************
 
 write.csv(data, file = "eleckart.csv",row.names=FALSE)
-
+camera_accessory_data <- subset(data, product_analytic_sub_category=="CameraAccessory")
+home_audio_data       <- subset(data, product_analytic_sub_category=="HomeAudio")
+gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAccessory")
 
 # ***************************************************************************
 #                        LINEAR MODEL ----
 # ***************************************************************************
+
+#Media Spends, 
 
 indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
 train=data[indices,]
