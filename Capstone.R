@@ -240,7 +240,7 @@ ce_data_weekly <- as.data.frame(ce_data_weekly)   # type cast to data.frame
 # ***************************************************************************
 
 # . . . .   Merge MediaInvestment & NPS ----
-media_nps <- merge(mediaInvestment_weekly, monthlyNPS_weekly, by = 'Month', all.x = TRUE)
+media_nps <- merge(mediaInvestment_weekly, monthlyNPS_weekly, by = 'week', all.x = TRUE)
 
 
 # . . . .   Merge Sales & SaleDays
@@ -251,17 +251,10 @@ data$Sales.Name[is.na(data$Sales.Name)] <- "No sale"
 #. . . .   Merge Data & Media_NPS
 data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 
-# Converting the varible type into 'factor'
-data$Month <- as.factor(data$Month)
-data$week <- as.factor(data$week)
-data$product_analytic_category     <- as.factor(data$product_analytic_category)
-data$product_analytic_sub_category <- as.factor(data$product_analytic_sub_category)
-data$product_analytic_vertical     <- as.factor(data$product_analytic_category)
 
 # Discount on Products
-data$discount     <- ((data$product_mrp - data$gmv)/(data$product_mrp) * 100)
-data$Holiday.Sale <- ifelse(data$Sales.Name == "No Sale", 0, 1)
-
+data$discount_mrp <- as.integer(data$gmv/data$units)
+data$discount     <- (1-(data$discount_gmv/data$product_mrp))*100
 
 
 # ***************************************************************************
