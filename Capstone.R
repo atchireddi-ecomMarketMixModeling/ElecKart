@@ -213,8 +213,8 @@ monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
 monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
 monthlyNPS_weekly   <- merge(weekdays, monthlyNPS_data, by='Month', all.x = TRUE)
 # Average weekly NPS for the weeks span over adjacent months
-monthlyNPS_weekly   <- monthlyNPS_weekly %>% group_by(week) %>%
-                                              summarize(NPS = mean(NPS))
+monthlyNPS_weekly   <- data.frame(monthlyNPS_weekly %>% group_by(week) %>%
+                                              summarize(NPS = mean(NPS)))
 
 
 # ***************************************************************************
@@ -224,12 +224,11 @@ ce_data_weekly <-  ce_data %>%
   group_by(product_analytic_category,
            product_analytic_sub_category,
            product_analytic_vertical,
-           Month,
            week) %>% 
   summarize(gmv=sum(gmv), 
             product_mrp=mean(product_mrp), 
             units=sum(units),
-            discount=average(discount),
+            discount=mean(discount),
             sla=mean(sla), 
             procurement_sla=mean(product_procurement_sla))
 
@@ -241,12 +240,8 @@ ce_data_weekly <- as.data.frame(ce_data_weekly)   # type cast to data.frame
 # ***************************************************************************
 
 # . . . .   Merge MediaInvestment & NPS ----
-media_nps <- merge(mediaInvestment_data, monthlyNPS_data[,-1], by = 'Month', all.x = TRUE)
+media_nps <- merge(mediaInvestment_weekly, monthlyNPS_weekly, by = 'Month', all.x = TRUE)
 
-
-# . . . .   Make the data daily ----
-media_nps <- cbind(Month=media_nps[,c(1)],
-                   media_nps[,-c(1,2)]/4.30)
 
 # . . . .   Merge Sales & SaleDays
 data <- merge(ce_data_weekly, specialSale_data[,-1], by = 'week', all.x = TRUE)
@@ -254,7 +249,7 @@ data$Sales.Name[is.na(data$Sales.Name)] <- "No sale"
 
 
 #. . . .   Merge Data & Media_NPS
-data <- merge(data, media_nps, by = 'Month', all.x = TRUE)
+data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 
 # Converting the varible type into 'factor'
 data$Month <- as.factor(data$Month)
