@@ -9,8 +9,6 @@ library(car)
 
 
 
-
-
 # ***************************************************************************
 #                   PROCs ----
 # ***************************************************************************
@@ -26,15 +24,17 @@ nweek <- function(x, format="%Y-%m-%d", origin){
 }
 
 
+
 # ***************************************************************************
-#                   LOAD DATA ---- Transaction Data
+#                   LOAD DATA ---- Transaction Data ----
 # ***************************************************************************
 # Make sure you are in current directory as in R-file is in. Should I do a commit?yes..
 
-setwd("~/Analytics Course - Upgrad/Capstone Project/ElecKart")   # can you change this path as relative to working directory and 
-ce_data <- read.csv('ConsumerElectronics.csv',stringsAsFactors = FALSE)
+ce_data <- read.csv('./input/ConsumerElectronics.csv',stringsAsFactors = FALSE)
 
 str(ce_data)
+
+
 
 # ***************************************************************************
 #                   DATA CLEANING ----
@@ -69,25 +69,42 @@ ce_data <- na.omit(ce_data)   # 4904 missing values, can be ignored
 ce_data <- cbind(ce_data[,-c(5,6,11,12)],
                  sapply(ce_data[,c(5,6,11,12)],as.character) )   # operate on interested columns
 
+
+
 # ***************************************************************************
 #                   FEATURE ENGINEERING ----
 # ***************************************************************************
 
 # create week,  week numbers start from min 'order date'
+# . . . . Week Numbers ----
 dates <- as.Date(
   gsub(" .*","",ce_data$order_date)
 )
-
 ce_data$week <- nweek(dates,origin = as.Date("2015-07-01"))
 
-# replace spaces
+
+# . . . . Days, weeks, Month ----
+# will compute Month, week, and no.of days per week (month, week)
+# 
+dys <- seq(as.Date("2015-07-01"),as.Date("2016-06-30"),'days')
+weekdays <- data.frame('days'=dys, Month = month(dys), 
+                       week = nweek(dys,origin = as.Date("2015-07-01")),
+                       nweek = rep(1,length(dys)))
+weekdays <- data.frame(weekdays %>% group_by(Month,week) %>% summarize(nweeks = sum(nweek)))
+weekdays$fracDays <- weekdays$nweeks/7
+
+
+# . . . . Strip Spaces ----
 ce_data$product_analytic_vertical <- gsub(" +","",ce_data$product_analytic_vertical)
 
-# Create a new variable discount
+
+# . . . . Generate Discount ----
 ce_data$discount <- ((ce_data$product_mrp - ce_data$gmv)/ce_data$product_mrp) * 100
 
+
+
 # ***************************************************************************
-#                   LOAD DATA ---- Media & Inv Data
+#                   LOAD DATA ---- Media & Inv Data ----
 # ***************************************************************************
 # . . . .   ProductList ----
 productList_data      <- 
@@ -107,6 +124,8 @@ specialSale_data      <-
 monthlyNPS_data       <- 
   read.csv("MonthlyNPSscore.csv", stringsAsFactors = FALSE )
 
+
+
 # ***************************************************************************
 #                   DATA PREPARATION ----
 # ***************************************************************************
@@ -114,11 +133,10 @@ monthlyNPS_data       <-
 # . . . .   ProductList ----
 str(productList_data)
 productList_data <- na.omit(productList_data)
+
 # . . . . . . . .  Correct Data types ----
 productList_data$Frequency <- as.integer(productList_data$Frequency)
-
 summary(productList_data)
-
 
 # . . . .   Media Investment ----
 str(mediaInvestment_data)
@@ -130,17 +148,20 @@ mediaInvestment_data[is.na(mediaInvestment_data)] <- 0   # zero investment
 
 # . . . .   SPecialSale ----
 str(specialSale_data)
-specialSale_data$Date          <- as.Date(specialSale_data$Date, format = "%m/%d/%Y")
-specialSale_data$week <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
+specialSale_data$Date     <- as.Date(specialSale_data$Date, format = "%m/%d/%Y")
+specialSale_data$week     <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
+
 summary(specialSale_data)
 unique(specialSale_data$week)
-specialSale_data<- specialSale_data[!duplicated(specialSale_data$week),]      #Subsetting unique holiday weeks
-
+specialSale_data            <- specialSale_data[!duplicated(specialSale_data$week),]      #Subsetting unique holiday weeks
+specialSale_data$Sales.Name <- gsub(" +","",specialSale_data$Sales.Name)    # remove spaces
 
 # . . . .   Monthly NPS ----
 str(monthlyNPS_data)
 monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
 monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
+
+
 
 # ***************************************************************************
 #                   WEEKLY DATA AGGREGATION ----
@@ -152,20 +173,23 @@ ce_data_weekly <-  ce_data %>%
            Month,
            week) %>% 
   summarize(gmv=sum(gmv), 
-            product_mrp=sum(product_mrp), 
+            product_mrp=mean(product_mrp), 
             units=sum(units),
-            discount=sum(discount),
+            discount=average(discount),
             sla=mean(sla), 
             procurement_sla=mean(product_procurement_sla))
+
+ce_data_weekly <- as.data.frame(ce_data_weekly)   # type cast to data.frame
 
 
 # ***************************************************************************
 #                   MERGING DATA ----
 # ***************************************************************************
 
-
 # . . . .   Merge MediaInvestment & NPS ----
 media_nps <- merge(mediaInvestment_data, monthlyNPS_data[,-1], by = 'Month', all.x = TRUE)
+
+
 # . . . .   Make the data daily ----
 media_nps <- cbind(Month=media_nps[,c(1)],
                    media_nps[,-c(1,2)]/4.30)
@@ -181,21 +205,27 @@ data <- merge(data, media_nps, by = 'Month', all.x = TRUE)
 # Converting the varible type into 'factor'
 data$Month <- as.factor(data$Month)
 data$week <- as.factor(data$week)
-data$product_analytic_category <- as.factor(data$product_analytic_category)
+data$product_analytic_category     <- as.factor(data$product_analytic_category)
 data$product_analytic_sub_category <- as.factor(data$product_analytic_sub_category)
-data$product_analytic_vertical <- as.factor(data$product_analytic_category)
+data$product_analytic_vertical     <- as.factor(data$product_analytic_category)
+
 # Discount on Products
-data$discount <- ((data$product_mrp - data$gmv)/(data$product_mrp) * 100)
+data$discount     <- ((data$product_mrp - data$gmv)/(data$product_mrp) * 100)
 data$Holiday.Sale <- ifelse(data$Sales.Name == "No Sale", 0, 1)
+
+
 
 # ***************************************************************************
 #           CREATE A NEW DATASET WITH ONLY THE IMP VARIABLES ----
 # ***************************************************************************
 
 write.csv(data, file = "eleckart.csv",row.names=FALSE)
+
 camera_accessory_data <- subset(data, product_analytic_sub_category=="CameraAccessory")
 home_audio_data       <- subset(data, product_analytic_sub_category=="HomeAudio")
 gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAccessory")
+
+
 
 # ***************************************************************************
 #                        LINEAR MODEL ----
@@ -203,11 +233,11 @@ gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAcce
 
 #Media Spends, 
 
-indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
-train=data[indices,]
-test=data[-indices,]
+# indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
+# train=data[indices,]
+# test=data[-indices,]
 
 #Modelling the Advertising Effects
-model_1 <- lm(units~ .,data=eleckart)
-summary(model_1)
-vif(model_1)
+# model_1 <- lm(units~ .,data=eleckart)
+# summary(model_1)
+# vif(model_1)
