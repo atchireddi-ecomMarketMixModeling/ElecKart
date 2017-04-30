@@ -1,3 +1,31 @@
+
+# ***************************************************************************
+#             MARKET MIX  MODELLING
+#             
+#       PGDDA ( IIIT Bangalore )
+#       April 2017
+#       AtchiReddy (atchireddi@gmail.com)
+#       Armando    ()
+#       Santosh Francis ()
+#       Anandh Rati ()
+#             
+# ***************************************************************************
+
+
+# Objective :
+
+# ElecKart is an e-commerce firm specialising in electronic products. Over the 
+# last one year, they had spent a significant amount of money in marketing. 
+# Occasionally, they had also offered big-ticket promotions (similar to the Big 
+# Billion Day). They are about to create a marketing budget for the next year 
+# which includes spending on commercials, online campaigns, and pricing & promotion 
+# strategies. The CFO feels that the money spent over last 12 months on marketing 
+# was not sufficiently impactful and that they can either cut on the budget or 
+# reallocate it  optimally across marketing levers to improve the revenue response
+
+
+
+
 # ***************************************************************************
 #                   LOAD LIBRARY ----
 # ***************************************************************************
@@ -44,7 +72,8 @@ head(ce_data)
 
 # . . . .   Outlier Treatment ----
 # Remove orders before July'15 and after June'16
-ce_data$order_date <- format(as.POSIXct(ce_data$order_date,format='%Y-%m-%d'),format='%Y-%m-%d')
+ce_data$order_date <- format(as.POSIXct(ce_data$order_date,format='%Y-%m-%d'),
+                             format='%Y-%m-%d')
 ce_data$order_date <- as.Date(ce_data$order_date, format = "%Y-%m-%d")
 
 ce_data <- subset(ce_data, order_date > "2015-6-30" & order_date < "2016-7-1")
@@ -145,6 +174,27 @@ summary(mediaInvestment_data)
 # . . . . . . . .  Missing Values ----
 mediaInvestment_data[is.na(mediaInvestment_data)] <- 0   # zero investment
 
+# . . . . . . . .  Convert to weekly data ----
+# convert montly spend to weekly
+mediaInvestment_data <- cbind(Month=mediaInvestment_data[,c(2)],
+                              mediaInvestment_data[,-c(1,2)]/4.30)
+# Add weekly information
+mediaInvestment_weekly <- merge(weekdays,mediaInvestment_data, by='Month', all.x = TRUE)
+
+# Convert media Investment at weekly granularity
+# pro-rate weekly investment as per the ratio of its days span over adjacent months
+mediaInvestment_weekly <- data.frame(mediaInvestment_weekly %>% group_by(week) %>% 
+                                              summarize(TotalInvestment = sum(Total.Investment*fracDays),
+                                              TV = sum(TV*fracDays), 
+                                              Digital=sum(Digital*fracDays),
+                                              Sponsorship = sum(Sponsorship*fracDays), 
+                                              ContentMarketing = sum(Content.Marketing*fracDays),
+                                              OnlineMarketing = sum(Online.marketing*fracDays), 
+                                              Affiliates = sum(Affiliates*fracDays),
+                                              SEM = sum(SEM*fracDays), 
+                                              Radio = sum(Radio*fracDays), 
+                                              Other = sum(Other*fracDays))
+                            )
 
 # . . . .   SPecialSale ----
 str(specialSale_data)
@@ -153,14 +203,18 @@ specialSale_data$week     <- nweek(specialSale_data$Date,origin = as.Date("2015-
 
 summary(specialSale_data)
 unique(specialSale_data$week)
-specialSale_data            <- specialSale_data[!duplicated(specialSale_data$week),]      #Subsetting unique holiday weeks
+#Subsetting unique holiday weeks
+specialSale_data            <- specialSale_data[!duplicated(specialSale_data$week),]      
 specialSale_data$Sales.Name <- gsub(" +","",specialSale_data$Sales.Name)    # remove spaces
 
 # . . . .   Monthly NPS ----
 str(monthlyNPS_data)
 monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
 monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
-
+monthlyNPS_weekly   <- merge(weekdays, monthlyNPS_data, by='Month', all.x = TRUE)
+# Average weekly NPS for the weeks span over adjacent months
+monthlyNPS_weekly   <- monthlyNPS_weekly %>% group_by(week) %>%
+                                              summarize(NPS = mean(NPS))
 
 
 # ***************************************************************************
@@ -228,16 +282,14 @@ gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAcce
 
 
 # ***************************************************************************
-#                        LINEAR MODEL ----
+#                        LINEAR MODEL : Camera_accessory ----
 # ***************************************************************************
 
-#Media Spends, 
+indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
+train=camera_accessory_data[indices,]
+test=camera_accessory_data[-indices,]
 
-# indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
-# train=data[indices,]
-# test=data[-indices,]
-
-#Modelling the Advertising Effects
-# model_1 <- lm(units~ .,data=eleckart)
+# Modelling the Advertising Effects
+# model_1 <- lm(gmv~ .,data=eleckart)
 # summary(model_1)
 # vif(model_1)
