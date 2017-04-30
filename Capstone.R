@@ -221,9 +221,7 @@ monthlyNPS_weekly   <- data.frame(monthlyNPS_weekly %>% group_by(week) %>%
 #                   WEEKLY DATA AGGREGATION ----
 # ***************************************************************************
 ce_data_weekly <-  ce_data %>% 
-  group_by(product_analytic_category,
-           product_analytic_sub_category,
-           product_analytic_vertical,
+  group_by(product_analytic_sub_category,
            week) %>% 
   summarize(gmv=sum(gmv), 
             product_mrp=mean(product_mrp), 
