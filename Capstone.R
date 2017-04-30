@@ -233,6 +233,7 @@ ce_data_weekly <-  ce_data %>%
 ce_data_weekly <- as.data.frame(ce_data_weekly)   # type cast to data.frame
 
 
+
 # ***************************************************************************
 #                   MERGING DATA ----
 # ***************************************************************************
@@ -252,18 +253,23 @@ data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 
 # Discount on Products
 data$discount_mrp <- as.integer(data$gmv/data$units)
-data$discount     <- (1-(data$discount_gmv/data$product_mrp))*100
+data$discount     <- (1-(data$discount_mrp/data$product_mrp))*100
+
 
 
 # ***************************************************************************
 #           CREATE A NEW DATASET WITH ONLY THE IMP VARIABLES ----
 # ***************************************************************************
 
-write.csv(data, file = "eleckart.csv",row.names=FALSE)
-
 camera_accessory_data <- subset(data, product_analytic_sub_category=="CameraAccessory")
 home_audio_data       <- subset(data, product_analytic_sub_category=="HomeAudio")
 gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAccessory")
+
+# . . . . Save Intrim Data ----
+write.csv(data, file = "./intrim/eleckart.csv",row.names=FALSE)
+write.csv(camera_accessory_data, file = './intrim/cameraAccessory.csv',row.names = FALSE)
+write.csv(home_audio_data, file = './intrim/homeAudio.csv',row.names = FALSE)
+write.csv(gaming_accessory_data, file = './intrim/gamingAccessory',row.names = FALSE)
 
 
 
@@ -271,9 +277,9 @@ gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAcce
 #                        LINEAR MODEL : Camera_accessory ----
 # ***************************************************************************
 
-indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
-train=camera_accessory_data[indices,]
-test=camera_accessory_data[-indices,]
+# indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
+# train=camera_accessory_data[indices,]
+# test=camera_accessory_data[-indices,]
 
 # Modelling the Advertising Effects
 # model_1 <- lm(gmv~ .,data=eleckart)
