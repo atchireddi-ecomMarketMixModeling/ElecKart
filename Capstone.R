@@ -331,8 +331,6 @@ model_cam8 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurem
                    Sponsorship + Other + Holiday.Sale, data = camera_accessory_data)
 summary(model_cam8)
 vif(model_cam8)
-
-
 # ***************************************************************************
 #                        LINEAR MODEL : gaming_accessory ----
 # ***************************************************************************
@@ -351,8 +349,38 @@ model_gam2 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital +
 summary(model_gam2)
 vif(model_gam2)
 
+#Removed 'OnlineMarketing' based on VIF & P-Value
+model_gam3 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + ContentMarketing + Affiliates + 
+                   SEM + Radio + Other, data = gaming_accessory_data)
+summary(model_gam3)
+vif(model_gam3)
 
+#Removed 'SEM' 
+model_gam4 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + ContentMarketing + Affiliates + 
+                   Radio + Other, data = gaming_accessory_data)
+summary(model_gam4)
+vif(model_gam4)
 
+#Removed 'ContentMarketing' 
+model_gam5 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + Affiliates + 
+                   Radio + Other, data = gaming_accessory_data)
+summary(model_gam5)
+vif(model_gam5)
+
+#Removed 'Radio' 
+model_gam6 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + Affiliates + Other, data = gaming_accessory_data)
+summary(model_gam6)
+vif(model_gam6)
+
+#Removed 'Affiliates' 
+model_gam7 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + Other, data = gaming_accessory_data)
+summary(model_gam7)
+vif(model_gam7)
 # ***************************************************************************
 #                        LINEAR MODEL : home_audio ----
 # ***************************************************************************
@@ -370,3 +398,40 @@ model_aud2 <- lm(formula = gmv ~ week + units + discount_mrp + TV + Digital +
                    NPS, data = home_audio_data)
 summary(model_aud2)
 vif(model_aud2)
+
+#Removed 'Digital' based on VIF & P-Value
+model_aud3 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
+                   ContentMarketing + OnlineMarketing + SEM + Radio + Other + 
+                   NPS, data = home_audio_data)
+summary(model_aud3)
+vif(model_aud3)
+
+#Removed 'Radio'
+model_aud4 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
+                   ContentMarketing + OnlineMarketing + SEM + Other + 
+                   NPS, data = home_audio_data)
+summary(model_aud4)
+vif(model_aud4)
+
+#Removed 'NPS'
+model_aud5 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
+                   ContentMarketing + OnlineMarketing + SEM + Other, data = home_audio_data)
+summary(model_aud5)
+vif(model_aud5)
+
+#Removed 'OnlineMarketing'
+model_aud6 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
+                   ContentMarketing + SEM + Other, data = home_audio_data)
+summary(model_aud6)
+vif(model_aud6)
+
+#Removed 'Other'
+model_aud7 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
+                   ContentMarketing + SEM, data = home_audio_data)
+summary(model_aud7)
+vif(model_aud7)
+
+#Removed 'ContentMarketing'
+model_aud8 <- lm(formula = gmv ~ week + units + discount_mrp + TV + SEM, data = home_audio_data)
+summary(model_aud8)
+vif(model_aud8)
