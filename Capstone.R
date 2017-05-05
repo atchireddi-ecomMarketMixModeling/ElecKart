@@ -277,11 +277,56 @@ write.csv(gaming_accessory_data, file = './intrim/gamingAccessory',row.names = F
 #                        LINEAR MODEL : Camera_accessory ----
 # ***************************************************************************
 
-# indices=sample(1:nrow(eleckart),0.7*nrow(eleckart))
-# train=camera_accessory_data[indices,]
-# test=camera_accessory_data[-indices,]
+indices=sample(1:nrow(camera_accessory_data),0.7*nrow(camera_accessory_data))
+train=camera_accessory_data[indices,]
+test=camera_accessory_data[-indices,]
 
-# Modelling the Advertising Effects
-# model_1 <- lm(gmv~ .,data=eleckart)
-# summary(model_1)
-# vif(model_1)
+model_cam1 <- lm(gmv~ .,data=camera_accessory_data)
+summary(model_cam1)
+step_cam <- stepAIC(model_cam1, direction = "both")
+step_cam
+model_cam2 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   TV + Sponsorship + ContentMarketing + Affiliates + SEM + 
+                   Radio + Other + NPS + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam2)
+vif(model_cam2)
+
+
+
+# ***************************************************************************
+#                        LINEAR MODEL : gaming_accessory ----
+# ***************************************************************************
+
+indices1=sample(1:nrow(gaming_accessory_data),0.7*nrow(gaming_accessory_data))
+train1=gaming_accessory_data[indices,]
+test1=gaming_accessory_data[-indices,]
+
+model_gam1 <- lm(gmv~ .,data=gaming_accessory_data)
+summary(model_gam1)
+step_gam <- stepAIC(model_gam1, direction = "both")
+step_gam
+model_gam2 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
+                   Sponsorship + ContentMarketing + OnlineMarketing + Affiliates + 
+                   SEM + Radio + Other, data = gaming_accessory_data)
+summary(model_gam2)
+vif(model_gam2)
+
+
+
+# ***************************************************************************
+#                        LINEAR MODEL : home_audio ----
+# ***************************************************************************
+
+indices2=sample(1:nrow(home_audio_data),0.7*nrow(home_audio_data))
+train2=home_audio_data[indices,]
+test2=home_audio_data[-indices,]
+
+model_aud1 <- lm(gmv~ .,data=home_audio_data)
+summary(model_aud1)
+step_aud <- stepAIC(model_aud1, direction = "both")
+step_aud
+model_aud2 <- lm(formula = gmv ~ week + units + discount_mrp + TV + Digital + 
+                   ContentMarketing + OnlineMarketing + SEM + Radio + Other + 
+                   NPS, data = home_audio_data)
+summary(model_aud2)
+vif(model_aud2)
