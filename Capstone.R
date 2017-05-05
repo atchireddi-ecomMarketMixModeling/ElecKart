@@ -291,6 +291,46 @@ model_cam2 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurem
 summary(model_cam2)
 vif(model_cam2)
 
+#Removed 'Radio' based on VIF & P-Value
+model_cam3 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   TV + Sponsorship + ContentMarketing + Affiliates + SEM + 
+                   Other + NPS + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam3)
+vif(model_cam3)
+
+#Removed 'ContentMarketing'
+model_cam4 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   TV + Sponsorship + Affiliates + SEM + 
+                   Other + NPS + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam4)
+vif(model_cam4)
+
+#Removed 'NPS'
+model_cam5 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   TV + Sponsorship + Affiliates + SEM + 
+                   Other + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam5)
+vif(model_cam5)
+
+#Removed 'SEM'
+model_cam6 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   TV + Sponsorship + Affiliates + 
+                   Other + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam6)
+vif(model_cam6)
+
+#Removed 'TV'
+model_cam7 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   Sponsorship + Affiliates + 
+                   Other + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam7)
+vif(model_cam7)
+
+#Removed 'Affiliates'
+model_cam8 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
+                   Sponsorship + Other + Holiday.Sale, data = camera_accessory_data)
+summary(model_cam8)
+vif(model_cam8)
 
 
 # ***************************************************************************
