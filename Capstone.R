@@ -34,7 +34,7 @@ library(dplyr)
 library(ggplot2)
 library(MASS)
 library(car)
-
+library(Hmisc)   # describe
 
 
 # ***************************************************************************
@@ -119,7 +119,7 @@ dys <- seq(as.Date("2015-07-01"),as.Date("2016-06-30"),'days')
 weekdays <- data.frame('days'=dys, Month = month(dys), 
                        week = nweek(dys,origin = as.Date("2015-07-01")),
                        nweek = rep(1,length(dys)))
-weekdays <- data.frame(weekdays %>% group_by(Month,week) %>% summarize(nweeks = sum(nweek)))
+weekdays <- data.frame(weekdays %>% group_by(Month,week) %>% summarise(nweeks = sum(nweek)))
 weekdays$fracDays <- weekdays$nweeks/7
 
 
@@ -184,7 +184,7 @@ mediaInvestment_weekly <- merge(weekdays,mediaInvestment_data, by='Month', all.x
 # Convert media Investment at weekly granularity
 # pro-rate weekly investment as per the ratio of its days span over adjacent months
 mediaInvestment_weekly <- data.frame(mediaInvestment_weekly %>% group_by(week) %>% 
-                                              summarize(TotalInvestment = sum(Total.Investment*fracDays),
+                                              summarise(TotalInvestment = sum(Total.Investment*fracDays),
                                               TV = sum(TV*fracDays), 
                                               Digital=sum(Digital*fracDays),
                                               Sponsorship = sum(Sponsorship*fracDays), 
@@ -213,8 +213,8 @@ monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
 monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
 monthlyNPS_weekly   <- merge(weekdays, monthlyNPS_data, by='Month', all.x = TRUE)
 # Average weekly NPS for the weeks span over adjacent months
-monthlyNPS_weekly   <- data.frame(monthlyNPS_weekly %>% group_by(week) %>%
-                                              summarize(NPS = mean(NPS)))
+monthlyNPS_weekly   <- monthlyNPS_weekly %>% group_by(., week) %>% 
+                                              summarise(., NPS = mean(NPS))
 
 
 # ***************************************************************************
@@ -223,7 +223,7 @@ monthlyNPS_weekly   <- data.frame(monthlyNPS_weekly %>% group_by(week) %>%
 ce_data_weekly <-  ce_data %>% 
   group_by(product_analytic_sub_category,
            week) %>% 
-  summarize(gmv=sum(gmv), 
+  summarise(gmv=sum(gmv), 
             product_mrp=mean(product_mrp), 
             units=sum(units),
             discount=mean(discount),
@@ -256,6 +256,18 @@ data$discount_mrp <- as.integer(data$gmv/data$units)
 data$discount     <- (1-(data$discount_mrp/data$product_mrp))*100
 
 
+# Sales.Name is now redundant.
+# Discount and sales.Name are kind of complementary
+# MRP and units are integral parts of gmv(dependant variable), 
+# having MRP and units are independant doesn't make sense
+data <- data_bkp
+# week,mrp, units, Sales event name, Total investment, discount_mrp
+data <- data[,-c(1,4,5,9,10,21)]    
+
+
+
+
+
 
 # ***************************************************************************
 #           CREATE A NEW DATASET WITH ONLY THE IMP VARIABLES ----
@@ -265,173 +277,21 @@ camera_accessory_data <- subset(data, product_analytic_sub_category=="CameraAcce
 home_audio_data       <- subset(data, product_analytic_sub_category=="HomeAudio")
 gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAccessory")
 
+# . . . . Data Cleanup ----
+# remove sub_category column
+camera_accessory_data <- camera_accessory_data[,-1]
+home_audio_data <- home_audio_data[,-1]
+gaming_accessory_data <- gaming_accessory_data[,-1]
+
+# . . . .   Normalize data ----
+camera_accessory_data_nrm <- scale(camera_accessory_data,center = TRUE)
+home_audio_data_nrm       <- scale(home_audio_data, center = TRUE)
+gaming_accessory_data_nrm <- scale(gaming_accessory_data, center = TRUE)
+
+
 # . . . . Save Intrim Data ----
 write.csv(data, file = "./intrim/eleckart.csv",row.names=FALSE)
-write.csv(camera_accessory_data, file = './intrim/cameraAccessory.csv',row.names = FALSE)
-write.csv(home_audio_data, file = './intrim/homeAudio.csv',row.names = FALSE)
-write.csv(gaming_accessory_data, file = './intrim/gamingAccessory',row.names = FALSE)
+write.csv(camera_accessory_data_nrm, file = './intrim/cameraAccessory.csv',row.names = FALSE)
+write.csv(home_audio_data_nrm, file = './intrim/homeAudio.csv',row.names = FALSE)
+write.csv(gaming_accessory_data_nrm, file = './intrim/gamingAccessory',row.names = FALSE)
 
-
-
-# ***************************************************************************
-#                        LINEAR MODEL : Camera_accessory ----
-# ***************************************************************************
-
-indices=sample(1:nrow(camera_accessory_data),0.7*nrow(camera_accessory_data))
-train=camera_accessory_data[indices,]
-test=camera_accessory_data[-indices,]
-
-model_cam1 <- lm(gmv~ .,data=camera_accessory_data)
-summary(model_cam1)
-step_cam <- stepAIC(model_cam1, direction = "both")
-step_cam
-model_cam2 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   TV + Sponsorship + ContentMarketing + Affiliates + SEM + 
-                   Radio + Other + NPS + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam2)
-vif(model_cam2)
-
-#Removed 'Radio' based on VIF & P-Value
-model_cam3 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   TV + Sponsorship + ContentMarketing + Affiliates + SEM + 
-                   Other + NPS + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam3)
-vif(model_cam3)
-
-#Removed 'ContentMarketing'
-model_cam4 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   TV + Sponsorship + Affiliates + SEM + 
-                   Other + NPS + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam4)
-vif(model_cam4)
-
-#Removed 'NPS'
-model_cam5 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   TV + Sponsorship + Affiliates + SEM + 
-                   Other + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam5)
-vif(model_cam5)
-
-#Removed 'SEM'
-model_cam6 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   TV + Sponsorship + Affiliates + 
-                   Other + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam6)
-vif(model_cam6)
-
-#Removed 'TV'
-model_cam7 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   Sponsorship + Affiliates + 
-                   Other + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam7)
-vif(model_cam7)
-
-#Removed 'Affiliates'
-model_cam8 <- lm(formula = gmv ~ units + product_mrp + discount + sla + procurement_sla + 
-                   Sponsorship + Other + Holiday.Sale, data = camera_accessory_data)
-summary(model_cam8)
-vif(model_cam8)
-# ***************************************************************************
-#                        LINEAR MODEL : gaming_accessory ----
-# ***************************************************************************
-
-indices1=sample(1:nrow(gaming_accessory_data),0.7*nrow(gaming_accessory_data))
-train1=gaming_accessory_data[indices,]
-test1=gaming_accessory_data[-indices,]
-
-model_gam1 <- lm(gmv~ .,data=gaming_accessory_data)
-summary(model_gam1)
-step_gam <- stepAIC(model_gam1, direction = "both")
-step_gam
-model_gam2 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + ContentMarketing + OnlineMarketing + Affiliates + 
-                   SEM + Radio + Other, data = gaming_accessory_data)
-summary(model_gam2)
-vif(model_gam2)
-
-#Removed 'OnlineMarketing' based on VIF & P-Value
-model_gam3 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + ContentMarketing + Affiliates + 
-                   SEM + Radio + Other, data = gaming_accessory_data)
-summary(model_gam3)
-vif(model_gam3)
-
-#Removed 'SEM' 
-model_gam4 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + ContentMarketing + Affiliates + 
-                   Radio + Other, data = gaming_accessory_data)
-summary(model_gam4)
-vif(model_gam4)
-
-#Removed 'ContentMarketing' 
-model_gam5 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + Affiliates + 
-                   Radio + Other, data = gaming_accessory_data)
-summary(model_gam5)
-vif(model_gam5)
-
-#Removed 'Radio' 
-model_gam6 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + Affiliates + Other, data = gaming_accessory_data)
-summary(model_gam6)
-vif(model_gam6)
-
-#Removed 'Affiliates' 
-model_gam7 <- lm(formula = gmv ~ week + units + discount_mrp + sla + Digital + 
-                   Sponsorship + Other, data = gaming_accessory_data)
-summary(model_gam7)
-vif(model_gam7)
-# ***************************************************************************
-#                        LINEAR MODEL : home_audio ----
-# ***************************************************************************
-
-indices2=sample(1:nrow(home_audio_data),0.7*nrow(home_audio_data))
-train2=home_audio_data[indices,]
-test2=home_audio_data[-indices,]
-
-model_aud1 <- lm(gmv~ .,data=home_audio_data)
-summary(model_aud1)
-step_aud <- stepAIC(model_aud1, direction = "both")
-step_aud
-model_aud2 <- lm(formula = gmv ~ week + units + discount_mrp + TV + Digital + 
-                   ContentMarketing + OnlineMarketing + SEM + Radio + Other + 
-                   NPS, data = home_audio_data)
-summary(model_aud2)
-vif(model_aud2)
-
-#Removed 'Digital' based on VIF & P-Value
-model_aud3 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
-                   ContentMarketing + OnlineMarketing + SEM + Radio + Other + 
-                   NPS, data = home_audio_data)
-summary(model_aud3)
-vif(model_aud3)
-
-#Removed 'Radio'
-model_aud4 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
-                   ContentMarketing + OnlineMarketing + SEM + Other + 
-                   NPS, data = home_audio_data)
-summary(model_aud4)
-vif(model_aud4)
-
-#Removed 'NPS'
-model_aud5 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
-                   ContentMarketing + OnlineMarketing + SEM + Other, data = home_audio_data)
-summary(model_aud5)
-vif(model_aud5)
-
-#Removed 'OnlineMarketing'
-model_aud6 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
-                   ContentMarketing + SEM + Other, data = home_audio_data)
-summary(model_aud6)
-vif(model_aud6)
-
-#Removed 'Other'
-model_aud7 <- lm(formula = gmv ~ week + units + discount_mrp + TV + 
-                   ContentMarketing + SEM, data = home_audio_data)
-summary(model_aud7)
-vif(model_aud7)
-
-#Removed 'ContentMarketing'
-model_aud8 <- lm(formula = gmv ~ week + units + discount_mrp + TV + SEM, data = home_audio_data)
-summary(model_aud8)
-vif(model_aud8)
