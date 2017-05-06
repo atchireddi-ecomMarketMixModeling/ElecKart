@@ -284,9 +284,13 @@ home_audio_data <- home_audio_data[,-1]
 gaming_accessory_data <- gaming_accessory_data[,-1]
 
 # . . . .   Normalize data ----
-camera_accessory_data_nrm <- scale(camera_accessory_data,center = TRUE)
-home_audio_data_nrm       <- scale(home_audio_data, center = TRUE)
-gaming_accessory_data_nrm <- scale(gaming_accessory_data, center = TRUE)
+# Normalize all numeric independant features
+camera_accessory_data_nrm <- cbind(gmv=camera_accessory_data$gmv,
+                                   scale(camera_accessory_data[,-1],center = TRUE))
+home_audio_data_nrm       <- cbind(gmv=home_audio_data$gmv,
+                                   scale(home_audio_data[,-1], center = TRUE))
+gaming_accessory_data_nrm <- cbind(gmv=gaming_accessory_data$gmv,
+                                   scale(gaming_accessory_data[,-1], center = TRUE))
 
 
 # . . . . Save Intrim Data ----
