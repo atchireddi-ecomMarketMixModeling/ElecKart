@@ -43,7 +43,7 @@ summary(step_cam)
 #                        LINEAR MODEL : gaming_accessory ----
 # ***************************************************************************
 
-indices=sample(1:nrow(home_audio_data_nrm),0.7*nrow(home_audio_data_nrm))
+indices=sample(1:nrow(home_audio_data_nrm),1.0*nrow(home_audio_data_nrm))
 train=home_audio_data_nrm[indices,]
 test=home_audio_data_nrm[-indices,]
 
@@ -64,7 +64,7 @@ summary(step_ga)
 #                        LINEAR MODEL : home_audio ----
 # ***************************************************************************
 
-indices=sample(1:nrow(gaming_accessory_data_nrm),0.7*nrow(gaming_accessory_data_nrm))
+indices=sample(1:nrow(gaming_accessory_data_nrm),1.0*nrow(gaming_accessory_data_nrm))
 train=gaming_accessory_data_nrm[indices,]
 test=gaming_accessory_data_nrm[-indices,]
 
