@@ -137,21 +137,21 @@ ce_data$discount <- ((ce_data$product_mrp - ce_data$gmv)/ce_data$product_mrp) * 
 # ***************************************************************************
 # . . . .   ProductList ----
 productList_data      <- 
-  read.csv("ProductList.csv", stringsAsFactors = FALSE, 
+  read.csv("./input/ProductList.csv", stringsAsFactors = FALSE, 
            na.strings=c('\\N'))
 
 # . . . .   Media Investment ----
 mediaInvestment_data  <- 
-  read.csv("MediaInvestment.csv", stringsAsFactors = FALSE)
+  read.csv("./input/MediaInvestment.csv", stringsAsFactors = FALSE)
 
 # . . . .  Special Sale Event ----
 
 specialSale_data      <- 
-  read.csv("SpecialSale.csv", stringsAsFactors = FALSE)
+  read.csv("./input/SpecialSale.csv", stringsAsFactors = FALSE)
 
 # . . . .   Monthly NPS ----
 monthlyNPS_data       <- 
-  read.csv("MonthlyNPSscore.csv", stringsAsFactors = FALSE )
+  read.csv("./input/MonthlyNPSscore.csv", stringsAsFactors = FALSE )
 
 
 

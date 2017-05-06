@@ -102,7 +102,29 @@ model_cam1 <- lm(gmv~ .,data=camera_accessory_data_nrm)
 #+ . . . . . . . . Auto-Otimize Model ----
 #' ###### Auto-Optimize Model
 step_cam <- stepAIC(model_cam1, direction = "both",trace=FALSE,k=2)
- 
+summary(step_cam)
+model_cam2 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + 
+                   ContentMarketing + Affiliates + SEM + Radio, data = camera_accessory_data_nrm)
+summary(model_cam2)
+vif(model_cam2)
+
+#Removing SEM
+model_cam3 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + 
+                   ContentMarketing + Affiliates + Radio, data = camera_accessory_data_nrm)
+summary(model_cam3)
+vif(model_cam3)
+
+#Removing ContentMarketing
+model_cam4 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + Affiliates + Radio, data = camera_accessory_data_nrm)
+summary(model_cam4)
+vif(model_cam4)
+
+#Removing Radio & TV
+model_cam5 <- lm(formula = gmv ~ sla + procurement_sla + Digital + Sponsorship + Affiliates, data = camera_accessory_data_nrm)
+summary(model_cam5)
+vif(model_cam5)
+
+
 #' **Summary**
 #' \footnotesize
 stargazer(model_cam1,step_cam, align = TRUE, type = 'text',
