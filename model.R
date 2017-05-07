@@ -12,11 +12,14 @@
 #' ## Load Libraries:
 #'
 #'  Load required libraries. Will use `stepAIC`  from `MASS` package for model pruning.
+#'  `vif` variation inflation factor from `car` package
 #' 
 
 #+ warning=FALSE, message=FALSE
 library(MASS)
+library(car)
 library(stargazer)
+source('./code/atchircUtils.R')
 
 
 
@@ -57,6 +60,13 @@ str(camera_accessory_data_nrm)
 #' **Features distribution:** Look at features statistical distributions
 stargazer(camera_accessory_data_nrm,type='text')
 #' \normalsize
+
+#+ EDA ----
+#'
+#' **Marketing Spend Breakdown:**
+#' 
+#' ![](../output/MarketingSpendBreakdown1.png)
+
 
 
 #' \vspace{12pt}
@@ -107,7 +117,28 @@ step_cam <- stepAIC(model_cam1, direction = "both",trace=FALSE,k=2)
 #' \footnotesize
 stargazer(model_cam1,step_cam, align = TRUE, type = 'text',
           title='Linear Regression Results', single.row=TRUE)
+#' **Variation Inflation Factor**
+knitr::kable(viewModelSummaryVIF(step_cam))
 #' \normalsize
+
+#' OBservations:
+#' 
+#' `Digital` and  `SEM` exhibits multi-collinearity, with `Digital` sligthly highly
+#' significant. Lets refer marketing spend breakdown
+#' 
+
+
+#+ . . . . . . . . Prune procurement_sla, sla, ContentMarketing, Radio, Digital  ----
+#' **Final Model:**
+model_cam2=lm(formula = gmv ~  Sponsorship + SEM + TV +
+     Affiliates, data = camera_accessory_data_nrm)
+#' \footnotesize
+getModelR2(model_cam2)
+knitr::kable(viewModelSummaryVIF(model_cam2))
+#' \normalsize
+
+
+
 
 #' \vspace{8pt}
 #' ##### **Understanding Model:**
@@ -138,6 +169,19 @@ step_ga <- stepAIC(model_ga1, direction = "both",trace=FALSE)
 #' \footnotesize
 stargazer(model_ga1,step_ga, align = TRUE, type = 'text',
           title='Linear Regression Results', single.row=TRUE)
+knitr::kable(viewModelSummaryVIF(step_ga))
+#' \normalsize
+
+
+#+ . . . . . . . . Prune OnlineMarketing, procurement_sla, NPS, SEM, ContentMarketing ----
+#' **Final Model**
+model_ga2 <- lm(formula = gmv ~ discount + TV + Digital + 
+Sponsorship + Affiliates + 
+   Radio, data = gaming_accessory_data_nrm)
+
+#' \footnotesize
+knitr::kable(viewModelSummaryVIF(model_ga2))
+getModelR2(model_ga2)
 #' \normalsize
 
 
@@ -160,10 +204,18 @@ step_ha <- stepAIC(model_ha1, direction = "both",trace=FALSE)
 #' **Summary**
 stargazer(model_ha1,step_ha, align = TRUE, type = 'text',
           title='Linear Regression Results', single.row=TRUE)
+knitr::kable(viewModelSummaryVIF(step_ha))
 #' \normalsize
 
 
-
+#+ . . . . . . . . Prune ContentMarketing,TV, NPS, OnlineMarketing, SEm, Radio, Digital, Other, procurement ----
+#'
+model_ha2 <- lm(formula = gmv ~ discount + sla + 
+                  Sponsorship, data = home_audio_data_nrm)
+#' \footnotesize
+knitr::kable(viewModelSummaryVIF(model_ha2))
+getModelR2(model_ha2)
+#' \normalsize
 
 
 #+ Observations ----
