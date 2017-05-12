@@ -262,7 +262,7 @@ data$discount     <- (1-(data$discount_mrp/data$product_mrp))*100
 # having MRP and units are independant doesn't make sense
 data <- data_bkp
 # week,mrp, units, Sales event name, Total investment, discount_mrp
-data <- data[,-c(1,4,5,9,10,21)]    
+data <- data[,-c(1,5,9,10,21)]    
 
 
 

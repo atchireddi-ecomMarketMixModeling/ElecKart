@@ -19,7 +19,7 @@
 library(MASS)
 library(car)
 library(stargazer)
-source('./code/atchircUtils.R')
+#source('./code/atchircUtils.R')
 
 
 
@@ -36,20 +36,23 @@ source('./code/atchircUtils.R')
 #' `Gaming_accessory` product sub-categories. For simplicity will start
 #' Linear model building with numerical features, later will consider 
 #' categorical features.
-#' \vspace{4pt}   
-
+#' \vspace{4pt}
+    
+setwd("~/Analytics Course - Upgrad/Capstone Project/ElecKart")
 #+ load_data,
 camera_accessory_data_nrm <- read.csv('./intrim/cameraAccessory.csv')
-home_audio_data_nrm       <- read.csv('./intrim/homeAudio.csv')
+home_audio_data_nrm <- read.csv('./intrim/homeAudio.csv')
 gaming_accessory_data_nrm <- read.csv('./intrim/gamingAccessory')
 
 
+ 
 #' \vspace{4pt}
 #' Lets preview the dataset structure. `gmv` gross merchandise values is our target
 #' variable, which we would like to maximize with optimal marketing spend across 
 #' different marketing levers, `discount` is one of the KPI derived from sales data, 
 #' bunch of other features from marketing spend and NPS datasets.
 #' \vspace{8pt}
+ 
 
 
 #'
@@ -87,6 +90,8 @@ stargazer(camera_accessory_data_nrm,type='text')
 
 
 
+
+ 
 #' \newpage
 #+ Model Building ----
 #' ## **Model Building - Linear Model:**
@@ -102,6 +107,7 @@ stargazer(camera_accessory_data_nrm,type='text')
 
 
 
+
 #+ . . . . Camera Accessory ----
 #' #### Camera Accesory:
 #' 
@@ -113,35 +119,41 @@ model_cam1 <- lm(gmv~ .,data=camera_accessory_data_nrm)
 #' ###### Auto-Optimize Model
 step_cam <- stepAIC(model_cam1, direction = "both",trace=FALSE,k=2)
 summary(step_cam)
-model_cam2 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + 
-                   ContentMarketing + Affiliates + SEM + Radio, data = camera_accessory_data_nrm)
+
+
+#' **Summary**
+ 
+stargazer(model_cam1,step_cam, align = TRUE, type = 'text',
+          title='Linear Regression Results', single.row=TRUE)
+#' **Variation Inflation Factor**
+ 
+
+#Pruning of Variables to arrive at Final Model
+model_cam2 <- lm(formula = gmv ~ product_mrp + procurement_sla + Digital + 
+                   Sponsorship + Affiliates + SEM + Radio + Other, data = camera_accessory_data_nrm)
 summary(model_cam2)
 vif(model_cam2)
 
-#Removing SEM
-model_cam3 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + 
-                   ContentMarketing + Affiliates + Radio, data = camera_accessory_data_nrm)
+#Removing Digital
+model_cam3 <- lm(formula = gmv ~ product_mrp + procurement_sla + 
+                   Sponsorship + Affiliates + SEM + Radio + Other, data = camera_accessory_data_nrm)
 summary(model_cam3)
 vif(model_cam3)
 
-#Removing ContentMarketing
-model_cam4 <- lm(formula = gmv ~ sla + procurement_sla + TV + Digital + Sponsorship + Affiliates + Radio, data = camera_accessory_data_nrm)
+#Removing Radio
+model_cam4 <- lm(formula = gmv ~ product_mrp + procurement_sla + 
+                   Sponsorship + Affiliates + SEM + Other, data = camera_accessory_data_nrm)
 summary(model_cam4)
 vif(model_cam4)
 
-#Removing Radio & TV
-model_cam5 <- lm(formula = gmv ~ sla + procurement_sla + Digital + Sponsorship + Affiliates, data = camera_accessory_data_nrm)
+#Removing SEM
+model_cam5 <- lm(formula = gmv ~ product_mrp + procurement_sla + 
+                   Sponsorship + Affiliates + Other, data = camera_accessory_data_nrm)
 summary(model_cam5)
 vif(model_cam5)
 
 
-#' **Summary**
-#' \footnotesize
-stargazer(model_cam1,step_cam, align = TRUE, type = 'text',
-          title='Linear Regression Results', single.row=TRUE)
-#' **Variation Inflation Factor**
-knitr::kable(viewModelSummaryVIF(step_cam))
-#' \normalsize
+
 
 #' OBservations:
 #' 
@@ -150,21 +162,10 @@ knitr::kable(viewModelSummaryVIF(step_cam))
 #' 
 
 
-#+ . . . . . . . . Prune procurement_sla, sla, ContentMarketing, Radio, Digital  ----
-#' **Final Model:**
-model_cam2=lm(formula = gmv ~  Sponsorship + SEM + TV +
-     Affiliates, data = camera_accessory_data_nrm)
-#' \footnotesize
-getModelR2(model_cam2)
-knitr::kable(viewModelSummaryVIF(model_cam2))
-#' \normalsize
 
-
-
-
-#' \vspace{8pt}
+ 
 #' ##### **Understanding Model:**
-#' \vspace{8pt}
+ 
 #' 
 #' Linear model could explain 56% of revenue from marketing expenditure, but some 
 #' of the significant features like `TV spending` has negative coefficient term. 
@@ -175,7 +176,7 @@ knitr::kable(viewModelSummaryVIF(model_cam2))
 
 
 
-#' \newpage
+ 
 #+ . . . . Gaming Accessory ----
 #' #### Gaming Accesory:
 #' 
@@ -186,30 +187,43 @@ model_ga1 <- lm(gmv~ .,data=gaming_accessory_data_nrm)
 #+ . . . . . . . . Auto-Optimize Model ----
 #' ###### Auto-Optimize Model
 step_ga <- stepAIC(model_ga1, direction = "both",trace=FALSE)
+summary(step_ga)
 
  
-#' \footnotesize
 stargazer(model_ga1,step_ga, align = TRUE, type = 'text',
           title='Linear Regression Results', single.row=TRUE)
-knitr::kable(viewModelSummaryVIF(step_ga))
-#' \normalsize
+ 
+
+#Pruning of Variables to arrive at Final Model
+model_ga2<- lm(formula = gmv ~ discount + procurement_sla + TV + Digital + 
+                 Sponsorship + ContentMarketing + OnlineMarketing + Affiliates + 
+                 SEM + Radio + NPS, data = gaming_accessory_data_nrm)
+summary(model_ga2) 
+vif(model_ga2)
+
+#Removing Online Marketing
+model_ga3<- lm(formula = gmv ~ discount + procurement_sla + TV + Digital + 
+                 Sponsorship + ContentMarketing + Affiliates + 
+                 SEM + Radio + NPS, data = gaming_accessory_data_nrm)
+summary(model_ga3) 
+vif(model_ga3)
+
+#Removing SEM
+model_ga4<- lm(formula = gmv ~ discount + procurement_sla + TV + Digital + 
+                 Sponsorship + ContentMarketing + Affiliates + Radio + NPS, data = gaming_accessory_data_nrm)
+summary(model_ga4) 
+vif(model_ga4)
+
+#Removing NPS
+model_ga5<- lm(formula = gmv ~ discount + procurement_sla + TV + Digital + 
+                 Sponsorship + ContentMarketing + Affiliates + Radio, data = gaming_accessory_data_nrm)
+summary(model_ga5) 
+vif(model_ga5)
 
 
-#+ . . . . . . . . Prune OnlineMarketing, procurement_sla, NPS, SEM, ContentMarketing ----
-#' **Final Model**
-model_ga2 <- lm(formula = gmv ~ discount + TV + Digital + 
-Sponsorship + Affiliates + 
-   Radio, data = gaming_accessory_data_nrm)
-
-#' \footnotesize
-knitr::kable(viewModelSummaryVIF(model_ga2))
-getModelR2(model_ga2)
-#' \normalsize
 
 
-
-
-#' \newpage
+ 
 #+ . . . . Home Accessory ----
 #' #### Home Accessory
 #' 
@@ -220,24 +234,63 @@ model_ha1 <- lm(gmv~ .,data=home_audio_data_nrm)
 #+ . . . . . . . . Auto-Optimize Model ----
 #' ###### Auto-Opitimize Model
 step_ha <- stepAIC(model_ha1, direction = "both",trace=FALSE)
+summary(step_ha)
 
-#' \normalsize
-#' \footnotesize
 #' **Summary**
 stargazer(model_ha1,step_ha, align = TRUE, type = 'text',
           title='Linear Regression Results', single.row=TRUE)
-knitr::kable(viewModelSummaryVIF(step_ha))
-#' \normalsize
 
 
-#+ . . . . . . . . Prune ContentMarketing,TV, NPS, OnlineMarketing, SEm, Radio, Digital, Other, procurement ----
+
+
+#Pruning of Variables to arrive at Final Model
 #'
-model_ha2 <- lm(formula = gmv ~ discount + sla + 
-                  Sponsorship, data = home_audio_data_nrm)
-#' \footnotesize
-knitr::kable(viewModelSummaryVIF(model_ha2))
-getModelR2(model_ha2)
-#' \normalsize
+model_ha2 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + 
+                  TV + Digital + Sponsorship + OnlineMarketing + Affiliates + 
+                  SEM + Radio + Other + NPS, data = home_audio_data_nrm)
+summary(model_ha2)
+vif(model_ha2)
+
+#Removing Affiliates
+model_ha3 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + 
+                  TV + Digital + Sponsorship + OnlineMarketing + 
+                  SEM + Radio + Other + NPS, data = home_audio_data_nrm)
+summary(model_ha3)
+vif(model_ha3)
+
+#Removing Affiliates
+model_ha3 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + 
+                  TV + Digital + Sponsorship + OnlineMarketing + 
+                  SEM + Radio + Other + NPS, data = home_audio_data_nrm)
+summary(model_ha3)
+vif(model_ha3)
+
+#Removing OnlineMarketing
+model_ha4 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + Digital + Sponsorship + TV + 
+                  SEM + Radio + Other + NPS, data = home_audio_data_nrm)
+summary(model_ha4)
+vif(model_ha4)
+
+#Removing TV (this reduced the VIF values but hits R-Sqr values)
+model_ha5 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + Digital + Sponsorship + 
+                  SEM + Radio + Other + NPS, data = home_audio_data_nrm)
+summary(model_ha5)
+vif(model_ha5)
+
+#Removing NPS
+model_ha6 <- lm(formula = gmv ~ product_mrp + discount + sla + procurement_sla + Digital + Sponsorship + 
+                  SEM + Radio + Other, data = home_audio_data_nrm)
+summary(model_ha6)
+vif(model_ha6)
+
+#Removing Product_Mrp
+model_ha7 <- lm(formula = gmv ~ discount + sla + procurement_sla + Digital + Sponsorship + 
+                  SEM + Radio + Other, data = home_audio_data_nrm)
+summary(model_ha7)
+vif(model_ha7)
+
+
+
 
 
 #+ Observations ----
