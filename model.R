@@ -1,5 +1,5 @@
 #' ---
-#' title: 'MarketMixModeling Models'
+#' title: 'MarketMixModeling Modeling'
 #' author: 'Atchireddy chavva'
 #' output: pdf_document
 #' ---
@@ -242,3 +242,336 @@ getModelR2(model_ha2)
 
 #+ Observations ----
 #' ## Observations:
+#' 
+
+
+
+
+
+
+
+
+
+
+# ***************************************************************************
+#                   BACK UP ----
+# ***************************************************************************
+
+
+
+
+
+
+#+ Model Building:
+data_week_bkp <- data_week
+data_week <- data_week[,-c(1,19,20,22)]  # Drop week, Total Investment, Units, Prepaid
+
+data_week_nrm <- cbind(gmv=data_week$gmv,as.data.frame(scale(data_week[,-2],center = TRUE)))
+
+mdl      <- lm(gmv~., data=data_week)
+
+#' **Optimized Model:**
+step_mdl <- stepAIC(mdl,direction='both',trace=FALSE,k=2)
+
+#' **Summary:**
+stargazer(mdl,step_mdl,type = 'text',no.space = TRUE)
+
+
+# plot(data_week$gmv)
+pred_lm <- predict(step_mdl,data_week[,-2])
+plot(data_week$gmv)
+lines(data_week$gmv)
+lines(pred_lm,lty=1,col='magenta')
+
+
+
+
+
+#+ Regularize Linear Model
+x = as.matrix(data_week[,-c(1,2,18)])
+y = as.vector(data_week$gmv)
+
+#+ Feature selection with L1 regularization
+cv.out <- cv.glmnet(as.matrix(x),as.vector(y),alpha=0)
+min_lambda <- cv.out$lambda.min
+ridge.mod <- glmnet(x,y,alpha=0,lambda = min_lambda)
+
+plot(cv.out)
+ridge.pred <- predict(ridge.mod,s= min_lambda,newx=x)
+
+# MSE 
+mean((ridge.pred-y)^2)
+actual <- y
+predict <- ridge.pred
+R2 <- 1 - (sum((actual-predict )^2)/sum((actual-mean(actual))^2))
+R2
+
+ridge.mod$a0
+ridge.mod$beta
+
+
+
+#+ Linear with L2 regularization
+
+# min lambda
+cv.out <- cv.glmnet(as.matrix(x),as.vector(y),alpha=1)
+min_lambda <- cv.out$lambda.min
+lasso.mod <- glmnet(x,y,alpha=1,lambda = min_lambda)
+
+plot(cv.out)
+lasso.pred <- predict(lasso.mod,s= min_lambda,newx=x)
+
+# MSE 
+mean((lasso.pred-y)^2)
+actual <- y
+predict <- lasso.pred
+R2 <- 1 - (sum((actual-predict )^2)/sum((actual-mean(actual))^2))
+R2
+
+lasso.mod$beta
+
+
+
+
+#+ Model Comparison:
+matplot(data_week$week, cbind(data_week$gmv,pred_lm,ridge.pred,lasso.pred),
+        type='l',lwd=3,xlab='week',ylab='GMV')
+legend("topright", inset=0, legend=c('GMV','LM','LM + L1 ','LM + L2 '),
+       lty=c(1:4), col=c(1,2,3,4))
+
+
+#+ Base Line Sales:
+plot(data_week$week,data_week$gmv,lwd=2,xlab='week',ylab='GMV, predicted Base GMV')
+lines(data_week$week,data_week$gmv,lwd=2)
+abline(step_mdl,col='red',lty=3,lwd=2)
+abline(h=ridge.mod$a0,col='green',lty=4,lwd=2)
+abline(lasso.mod,col='blue',lty=2,lwd=2)
+legend('topright', inset = 0, legend = c('GMV','LM Base GMV','LM + L1 Base GMV','LM + L2 Base GMV'), 
+       lty = c(1:4), col=c(1,2,3,4), lwd = 2)
+
+
+
+
+
+
+#' \vspace{8pt}
+#' \vspace{8pt}
+#' **Observations:**
+#' Linear model could explain 77% of revenue from promotions, marketing spend on various channels
+
+
+
+
+
+#+ Multiplicative Model ----
+#' \vspace{8pt}
+#' ## **Multiplicative Model:**
+#' \vspace{8pt}
+#' **Model Including All Variables:**
+#' \vspace{8pt}
+#' will convert multiplicative nature to linear by apply natural log transformation on all KPI
+data_week_cpy <- cbind(data_week[,c(1,2)], data_week[,-c(1,2)]+0.00001)
+data_week_log <- as.data.frame(log(data_week_cpy))
+
+
+mdl      <- lm(gmv~., data=data_week_log)  # drop units and Total Investment
+
+#' **Optimized Model:**
+step_mdl <- stepAIC(mdl,direction='both',trace=FALSE,k=2)
+
+#' **Summary:**
+stargazer(mdl,step_mdl,type = 'text',no.space = TRUE)
+viewModelSummaryVIF(step_mdl)
+
+#' \vspace{8pt}
+#' \vspace{8pt}
+#' **Observations:**
+#' Linear model could explain 77% of revenue from promotions, marketing spend on various channels
+
+lm(formula = gmv ~ week + discount + sla + procurement_sla + 
+     n_saledays + TV + Digital + OnlineMarketing + Affiliates + 
+     SEM + NPS + list_mrp, data = data_week_log)
+
+#+ -Digital ----
+mdl2 <- lm(formula = gmv ~ week + discount + sla + procurement_sla + 
+             n_saledays + TV + OnlineMarketing + Affiliates + 
+             SEM + NPS + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -NPS ----
+mdl2 <- lm(formula = gmv ~ week + discount + sla + procurement_sla + 
+             n_saledays + TV + OnlineMarketing + Affiliates + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -OnlineMarketing ----
+mdl2 <- lm(formula = gmv ~ week + discount + sla + procurement_sla + 
+             n_saledays + TV + Affiliates + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+
+#+ -week ----
+mdl2 <- lm(formula = gmv ~  discount + sla + procurement_sla + 
+             n_saledays + TV + Affiliates + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -discount ----
+mdl2 <- lm(formula = gmv ~  sla + procurement_sla + 
+             n_saledays + TV + Affiliates + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -discount ----
+mdl2 <- lm(formula = gmv ~ n_saledays + TV + Affiliates + discount +
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+
+
+#+ -Affiliates ----
+mdl2 <- lm(formula = gmv ~ week + discount + sla + procurement_sla + 
+             n_saledays + TV + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -Discount ----
+mdl2 <- lm(formula = gmv ~ week + sla + procurement_sla + 
+             n_saledays + TV + 
+             SEM + list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -SEM ----
+mdl2 <- lm(formula = gmv ~ week + sla + procurement_sla + 
+             n_saledays + TV + 
+             list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -week ----
+mdl2 <- lm(formula = gmv ~ sla + procurement_sla + 
+             n_saledays + TV + 
+             list_mrp, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+#+ -list_mrp ----
+mdl2 <- lm(formula = gmv ~ sla + procurement_sla + 
+             n_saledays + TV, data = data_week_log)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+pred <- predict(step_mdl,data_week_log)
+eprep <- exp(pred)
+plot(data_week$week,data_week$gmv)
+lines(data_week$week,eprep)
+
+
+
+
+#+ Koyck Model ----
+#' **Koyck Model:**
+#' \vspace{8pt}
+data_week_km <- data_week
+#data_week_km$gmv_lag1 <- shift(data_week_km$gmv,shiftBy = -1)
+str(data_week_km)
+#data_week_km <- as.data.frame(data_week_km)
+data_week_nrm <- as.data.frame(scale(data_week_km,center = TRUE))
+
+mdl <- lm(gmv~.,data=data_week_nrm)
+summary(mdl)
+viewModelSummaryVIF(mdl)
+
+step_mdl <- stepAIC(mdl,direction = 'both',trace = FALSE)
+summary(step_mdl)
+viewModelSummaryVIF(step_mdl)
+
+
+mdl2 <- lm(formula = gmv ~ product_mrp  + procurement_sla + n_saledays + 
+             Digital + Sponsorship + OnlineMarketing + Affiliates + 
+             SEM + Radio + Other + NPS + list_mrp, data = data_week_km)
+summary(mdl2)
+viewModelSummaryVIF(mdl2)
+
+
+data_week_km <- data %>% group_by(week) %>% 
+  summarise(gmv=sum(gmv),product_mrp=mean(product_mrp),
+            discount=mean(discount),sla=mean(sla),procurement_sla=mean(procurement_sla),
+            n_saledays=mean(n_saledays),NPS=mean(NPS),TV=mean(TV),Digital=mean(Digital),
+            Sponsorship=mean(Sponsorship),ContentMarketing=mean(ContentMarketing),
+            OnlineMarketing=mean(OnlineMarketing),Affiliates=mean(Affiliates),
+            SEM=mean(SEM),Radio=mean(Radio),Other=mean(Other),
+            list_mrp=mean(list_mrp))
+data_week_km$gmv_lag1 <- shift(data_week_km$gmv,shiftBy = -1)
+data_week_km$gmv_lag1[1] <- data_week_km$gmv[1]
+data_week_km$gmv_lag2 <- shift(data_week_km$gmv,shiftBy = -2)
+data_week_km$gmv_lag2[1] <- data_week_km$gmv[1]
+data_week_km$gmv_lag2[2] <- data_week_km$gmv[2]
+data_week_km$gmv_lag3 <- shift(data_week_km$gmv,shiftBy = -3)
+data_week_km$gmv_lag3[1] <- data_week_km$gmv[1]
+data_week_km$gmv_lag3[2] <- data_week_km$gmv[2]
+data_week_km$gmv_lag3[3] <- data_week_km$gmv[3]
+
+
+mdl <- lm(gmv~.,data=data_week_km)
+summary(mdl)
+viewModelSummaryVIF(mdl)
+
+step_mdl <- stepAIC(mdl,direction = 'both',trace = FALSE)
+summary(step_mdl)
+viewModelSummaryVIF(step_mdl)
+
+
+
+
+#+ Distributed Lag ----
+#' **Distribute Lag Model:**
+#' \vspace{8pt}
+
+data_week_km <- data %>% group_by(week) %>% 
+  summarise(gmv=sum(gmv),product_mrp=mean(product_mrp),
+            discount=mean(discount),sla=mean(sla),procurement_sla=mean(procurement_sla),
+            n_saledays=mean(n_saledays),NPS=mean(NPS),TV=mean(TV),Digital=mean(Digital),
+            Sponsorship=mean(Sponsorship),ContentMarketing=mean(ContentMarketing),
+            OnlineMarketing=mean(OnlineMarketing),Affiliates=mean(Affiliates),
+            SEM=mean(SEM),Radio=mean(Radio),Other=mean(Other),
+            list_mrp=mean(list_mrp))
+data_week_nrm = as.data.frame(scale(data_week_km,center = TRUE))
+drtb_data <- cbind(data_week_nrm[,c(1,3)],
+                   distributedLag(data_week_nrm[,-c(1,3)])
+)
+
+
+mdl <- lm(gmv~.,data=drtb_data[-c(1,2,3),])
+summary(mdl)
+viewModelSummaryVIF(mdl)
+
+step_mdl <- stepAIC(mdl,direction = 'both',trace = FALSE)
+summary(step_mdl)
+viewModelSummaryVIF(step_mdl)
+
+
+
+
+
+#+ Back Up ----
+#pred <- predict(mdl,data_week[,-2])
+#step_pred <- predict(step_mdl,data_week[,-2])
+
+#plot(data_week$week,data_week$gmv)
+#lines(data_week$week,pred)
+#lines(data_week$week,step_pred,lwd=2)
+
+
+
+
+
