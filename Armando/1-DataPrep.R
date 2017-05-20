@@ -1,31 +1,3 @@
-
-# ***************************************************************************
-#             MARKET MIX  MODELLING
-#             
-#       PGDDA ( IIIT Bangalore )
-#       April 2017
-#       AtchiReddy (atchireddi@gmail.com)
-#       Armando Halder   (armando.halder@gmail.com)
-#       Santosh Francis ()
-#       Anandh Rathi ()
-#             
-# ***************************************************************************
-
-
-# Objective :
-
-# ElecKart is an e-commerce firm specialising in electronic products. Over the 
-# last one year, they had spent a significant amount of money in marketing. 
-# Occasionally, they had also offered big-ticket promotions (similar to the Big 
-# Billion Day). They are about to create a marketing budget for the next year 
-# which includes spending on commercials, online campaigns, and pricing & promotion 
-# strategies. The CFO feels that the money spent over last 12 months on marketing 
-# was not sufficiently impactful and that they can either cut on the budget or 
-# reallocate it  optimally across marketing levers to improve the revenue response
-
-
-
-
 # ***************************************************************************
 #                   LOAD LIBRARY ----
 # ***************************************************************************
@@ -35,7 +7,6 @@ library(ggplot2)
 library(MASS)
 library(car)
 library(Hmisc)   # describe
-
 
 # ***************************************************************************
 #                   PROCs ----
@@ -58,11 +29,9 @@ nweek <- function(x, format="%Y-%m-%d", origin){
 # ***************************************************************************
 # Make sure you are in current directory as in R-file is in. Should I do a commit?yes..
 
-ce_data <- read.csv('./input/ConsumerElectronics.csv',stringsAsFactors = FALSE)
+ce_data <- read.csv('./data/ConsumerElectronics.csv',stringsAsFactors = FALSE)
 
 str(ce_data)
-
-
 
 # ***************************************************************************
 #                   DATA CLEANING ----
@@ -78,27 +47,29 @@ ce_data$order_date <- as.Date(ce_data$order_date, format = "%Y-%m-%d")
 
 ce_data <- subset(ce_data, order_date > "2015-6-30" & order_date < "2016-7-1")
 
+max(ce_data$product_mrp)
 
-# . . . .   Missing Values ----
+#NA Values
+sapply(ce_data, function(x) sum(is.na(x)))
+#Removed NA values from GMV
+ce_data <- na.omit(ce_data)
+ce_data <- subset(ce_data, product_mrp != 0)
+warning()
+# Lets add a couple of variables to the CE data. List Price from GMV and Promotion which is
+# the discount offered
 
-# Since 80% of the variable has NAs Omit 'deliverybday' & 'deliverycdays'
-# Removed Pincode, as there seems to be some data quality issues with this variable
-ce_data <- ce_data[,-c(9,10)]
+#....List Price variable
+ce_data$List_Price <- as.integer(ce_data$gmv / ce_data$units)
 
-summary(ce_data)
+#....Promotion Variable
+ce_data$Promotion <- as.numeric((ce_data$product_mrp - ce_data$List_Price) / ce_data$product_mrp)
 
-ce_data <- na.omit(ce_data)   # 4904 missing values, can be ignored
-
-
-# . . . .   Correct Data Types ----
-
-# 'order_id', 'order_item_id', 'cust_id', 'pincode' are qualitative data
-#  having numeric values, let's convert them to character type
-
-ce_data <- cbind(ce_data[,-c(5,6,11,12)],
-                 sapply(ce_data[,c(5,6,11,12)],as.character) )   # operate on interested columns
-
-
+#....Here we have created a Pricing categorical variable
+ce_data$mrp_category[ce_data$product_mrp == 0] <- "Free"
+ce_data$mrp_category[ce_data$product_mrp >= 150001] <- "Luxury"
+ce_data$mrp_category[ce_data$product_mrp >= 80001 & ce_data$product_mrp <= 150000] <- "Premium"
+ce_data$mrp_category[ce_data$product_mrp >= 30001 & ce_data$product_mrp <= 80000] <- "Mid"
+ce_data$mrp_category[ce_data$product_mrp > 0 & ce_data$product_mrp <= 30000] <- "Lower"
 
 # ***************************************************************************
 #                   FEATURE ENGINEERING ----
@@ -127,9 +98,6 @@ weekdays$fracDays <- weekdays$nweeks/7
 ce_data$product_analytic_vertical <- gsub(" +","",ce_data$product_analytic_vertical)
 
 
-# . . . . Generate Discount ----
-ce_data$discount <- ((ce_data$product_mrp - ce_data$gmv)/ce_data$product_mrp) * 100
-
 
 
 # ***************************************************************************
@@ -137,32 +105,30 @@ ce_data$discount <- ((ce_data$product_mrp - ce_data$gmv)/ce_data$product_mrp) * 
 # ***************************************************************************
 # . . . .   ProductList ----
 productList_data      <- 
-  read.csv("./input/ProductList.csv", stringsAsFactors = FALSE, 
+  read.csv("./data/ProductList.csv", stringsAsFactors = FALSE, 
            na.strings=c('\\N'))
 
 # . . . .   Media Investment ----
 mediaInvestment_data  <- 
-  read.csv("./input/MediaInvestment.csv", stringsAsFactors = FALSE)
+  read.csv("./data/MediaInvestment.csv", stringsAsFactors = FALSE)
 
 # . . . .  Special Sale Event ----
 
 specialSale_data      <- 
-  read.csv("./input/SpecialSale.csv", stringsAsFactors = FALSE)
+  read.csv("./data/SpecialSale.csv", stringsAsFactors = FALSE)
 
 # . . . .   Monthly NPS ----
 monthlyNPS_data       <- 
-  read.csv("./input/MonthlyNPSscore.csv", stringsAsFactors = FALSE )
+  read.csv("./data/MonthlyNPSscore.csv", stringsAsFactors = FALSE )
 
+# . . . .   Holiday List ----
+holiday_list      <- 
+  read.csv("./data/HolidayList.csv", stringsAsFactors = FALSE)
 
 
 # ***************************************************************************
 #                   DATA PREPARATION ----
 # ***************************************************************************
-
-# . . . .   ProductList ----
-str(productList_data)
-productList_data <- na.omit(productList_data)
-
 # . . . . . . . .  Correct Data types ----
 productList_data$Frequency <- as.integer(productList_data$Frequency)
 summary(productList_data)
@@ -184,17 +150,17 @@ mediaInvestment_weekly <- merge(weekdays,mediaInvestment_data, by='Month', all.x
 # Convert media Investment at weekly granularity
 # pro-rate weekly investment as per the ratio of its days span over adjacent months
 mediaInvestment_weekly <- data.frame(mediaInvestment_weekly %>% group_by(week) %>% 
-                                              summarise(TotalInvestment = sum(Total.Investment*fracDays),
-                                              TV = sum(TV*fracDays), 
-                                              Digital=sum(Digital*fracDays),
-                                              Sponsorship = sum(Sponsorship*fracDays), 
-                                              ContentMarketing = sum(Content.Marketing*fracDays),
-                                              OnlineMarketing = sum(Online.marketing*fracDays), 
-                                              Affiliates = sum(Affiliates*fracDays),
-                                              SEM = sum(SEM*fracDays), 
-                                              Radio = sum(Radio*fracDays), 
-                                              Other = sum(Other*fracDays))
-                            )
+                                       summarise(TotalInvestment = sum(Total.Investment*fracDays),
+                                                 TV = sum(TV*fracDays), 
+                                                 Digital=sum(Digital*fracDays),
+                                                 Sponsorship = sum(Sponsorship*fracDays), 
+                                                 ContentMarketing = sum(Content.Marketing*fracDays),
+                                                 OnlineMarketing = sum(Online.marketing*fracDays), 
+                                                 Affiliates = sum(Affiliates*fracDays),
+                                                 SEM = sum(SEM*fracDays), 
+                                                 Radio = sum(Radio*fracDays), 
+                                                 Other = sum(Other*fracDays))
+)
 
 # . . . .   SPecialSale ----
 str(specialSale_data)
@@ -202,10 +168,21 @@ specialSale_data$Date     <- as.Date(specialSale_data$Date, format = "%m/%d/%Y")
 specialSale_data$week     <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
 
 summary(specialSale_data)
-unique(specialSale_data$week)
-#Subsetting unique holiday weeks
-specialSale_data            <- specialSale_data[!duplicated(specialSale_data$week),]      
-specialSale_data$Sales.Name <- gsub(" +","",specialSale_data$Sales.Name)    # remove spaces
+sale_days <- as.data.frame(table(specialSale_data$week))
+names(sale_days) <- c("week", "sale_days")
+
+#Created sale days here and this will be used in the final merge, because we will be needing the number of sale days
+
+
+# . . . .   HolidayList ----
+holiday_list$Date     <- as.Date(holiday_list$Date, format = "%m/%d/%Y")
+holiday_list$week     <- nweek(holiday_list$Date,origin = as.Date("2015-07-01"))
+
+holiday_days <- as.data.frame(table(holiday_list$week))
+names(holiday_days) <- c("week", "holidays")
+
+#Added a new KPI holiday days here and this will be used in the final merge, this is different than sale days
+
 
 # . . . .   Monthly NPS ----
 str(monthlyNPS_data)
@@ -214,59 +191,82 @@ monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
 monthlyNPS_weekly   <- merge(weekdays, monthlyNPS_data, by='Month', all.x = TRUE)
 # Average weekly NPS for the weeks span over adjacent months
 monthlyNPS_weekly   <- monthlyNPS_weekly %>% group_by(., week) %>% 
-                                              summarise(., NPS = mean(NPS))
+  summarise(., NPS = mean(NPS))
+
+# ***************************************************************************
+#                   CREATING ADSTOCK ----
+# ***************************************************************************
+
+#Creating a Dataset for just the sales/gmv data to be used as input for creating media Adstock
+gmv_weekly <-  ce_data %>% 
+  group_by(week) %>% 
+  summarise(gmv=sum(gmv))
+write.csv(gmv_weekly, file = "sales.csv",row.names=FALSE)
+
+
+# . . . .   Media Adstock ----
+media_adstk      <- 
+  read.csv("./data/media_adstock.csv", stringsAsFactors = FALSE)
 
 
 # ***************************************************************************
 #                   WEEKLY DATA AGGREGATION ----
 # ***************************************************************************
+
+#Weekly aggregation of ce_data
+
 ce_data_weekly <-  ce_data %>% 
-  group_by(product_analytic_sub_category,
+  group_by(mrp_category,
+           product_analytic_sub_category,
            week) %>% 
-  summarise(gmv=sum(gmv), 
+  summarise(gmv=sum(gmv),
             product_mrp=mean(product_mrp), 
+            list_price=mean(List_Price), 
             units=sum(units),
-            discount=mean(discount),
+            Promotion=mean(Promotion),
             sla=mean(sla), 
             procurement_sla=mean(product_procurement_sla))
 
+
 ce_data_weekly <- as.data.frame(ce_data_weekly)   # type cast to data.frame
+summary(ce_data_weekly)
 
 
 
+
+#Converting dummy variables for mrp_category
+fact1<- as.data.frame(model.matrix(~ce_data_weekly[, 1], data = ce_data_weekly))
+fact1 <- fact1[,-1]
+names(fact1) <- c("cat_luxury", "cat_mid", "cat_premium")
+# Merge dummy variables with the main data frame
+ce_data_weekly <- cbind(ce_data_weekly[,-10], fact1)
 # ***************************************************************************
 #                   MERGING DATA ----
 # ***************************************************************************
 
 # . . . .   Merge MediaInvestment & NPS ----
-media_nps <- merge(mediaInvestment_weekly, monthlyNPS_weekly, by = 'week', all.x = TRUE)
+media_nps <- merge(media_adstk, monthlyNPS_weekly, by = 'week', all.x = TRUE)
 
 
 # . . . .   Merge Sales & SaleDays
-data <- merge(ce_data_weekly, specialSale_data[,-1], by = 'week', all.x = TRUE)
-data$Sales.Name[is.na(data$Sales.Name)] <- "No sale"
+data <- merge(ce_data_weekly, sale_days, by = 'week', all.x = TRUE)
+data$sale_days[is.na(data$sale_days)] <- 0 #no sale days in that week
 
+# . . . .   Merge data & holidays
+data <- merge(data, holiday_days, by = 'week', all.x = TRUE)
+data$holidays[is.na(data$holidays)] <- 0 #no sale days in that week
 
 #. . . .   Merge Data & Media_NPS
 data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 
-
-# Discount on Products
-data$discount_mrp <- as.integer(data$gmv/data$units)
-data$discount     <- (1-(data$discount_mrp/data$product_mrp))*100
+#Backing up the data
+data_bkp <- data
 
 
-# Sales.Name is now redundant.
-# Discount and sales.Name are kind of complementary
-# MRP and units are integral parts of gmv(dependant variable), 
-# having MRP and units are independant doesn't make sense
-data <- data_bkp
-# week,mrp, units, Sales event name, Total investment, discount_mrp
-data <- data[,-c(1,5,9,10,21)]    
-
-
-
-
+#Removing mrp_category
+#Keeping weeks, because I am thinking of using that to create our Training & Test Datasets
+data <- data[,-c(2)]
+quantile(data$product_mrp)
 
 
 # ***************************************************************************
@@ -279,23 +279,13 @@ gaming_accessory_data <- subset(data, product_analytic_sub_category=="GamingAcce
 
 # . . . . Data Cleanup ----
 # remove sub_category column
-camera_accessory_data <- camera_accessory_data[,-1]
-home_audio_data <- home_audio_data[,-1]
-gaming_accessory_data <- gaming_accessory_data[,-1]
-
-# . . . .   Normalize data ----
-# Normalize all numeric independant features
-camera_accessory_data_nrm <- cbind(gmv=camera_accessory_data$gmv,
-                                   scale(camera_accessory_data[,-1],center = TRUE))
-home_audio_data_nrm       <- cbind(gmv=home_audio_data$gmv,
-                                   scale(home_audio_data[,-1], center = TRUE))
-gaming_accessory_data_nrm <- cbind(gmv=gaming_accessory_data$gmv,
-                                   scale(gaming_accessory_data[,-1], center = TRUE))
+camera_accessory_data <- camera_accessory_data[,-2]
+home_audio_data <- home_audio_data[,-2]
+gaming_accessory_data <- gaming_accessory_data[,-2]
 
 
 # . . . . Save Intrim Data ----
 write.csv(data, file = "./intrim/eleckart.csv",row.names=FALSE)
-write.csv(camera_accessory_data_nrm, file = './intrim/cameraAccessory.csv',row.names = FALSE)
-write.csv(home_audio_data_nrm, file = './intrim/homeAudio.csv',row.names = FALSE)
-write.csv(gaming_accessory_data_nrm, file = './intrim/gamingAccessory',row.names = FALSE)
-
+write.csv(camera_accessory_data, file = './intrim/cameraAccessory.csv',row.names = FALSE)
+write.csv(home_audio_data, file = './intrim/homeAudio.csv',row.names = FALSE)
+write.csv(gaming_accessory_data, file = './intrim/gamingAccessory.csv',row.names = FALSE)
