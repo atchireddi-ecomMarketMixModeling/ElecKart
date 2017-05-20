@@ -27,20 +27,21 @@ cam_test <- subset(camera_accessory_data, week > 36)
 cam_train <- cam_train[,-1]
 cam_test <- cam_test[,-1]
 
+
 #Gaming Accessory
 gam_train <- subset(gaming_accessory_data, week <= 36)
 gam_test <- subset(gaming_accessory_data, week > 36)
 gam_train <- gam_train[,-1]
 gam_test <- gam_test[,-1]
                      
-#Gaming Accessory
+#Home Audio
 hom_train <- subset(home_audio_data, week <= 36)
 hom_test <- subset(home_audio_data, week > 36)
 hom_train <- hom_train[,-1]
 hom_test <- hom_test[,-1]
 
 # ***************************************************************************
-#                   MODELLING ---- Simple Linear Model ----
+#                   MODELLING ---- Simple Linear Model(additive) ----
 # ***************************************************************************
 
 
@@ -210,4 +211,76 @@ hom_test$predicted_gmv <- pred_hom_slm
 #Lets look at the Corr & R2
 cor(hom_test$gmv, hom_test$predicted_gmv)
 cor(hom_test$gmv, hom_test$predicted_gmv)^2
+#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+
+#Log Transformation of Train & Test Data
+
+
+#Camera Accessory
+cam_train_log <- log1p(cam_train)
+cam_test_log <- log1p(cam_test)
+
+#Gaming Accessory
+gam_train_log <- log1p(gam_train)
+gam_test_log <- log1p(gam_test)
+
+#Home Audio
+hom_train_log <- log1p(hom_train)
+hom_test_log <- log1p(hom_test)
+
+
+
+
+# ***************************************************************************
+#                   MODELLING ---- Multiplicative Model ----
+# ***************************************************************************
+
+#+ . . . . Camera Accessory ----
+#' 
+#+ . . . . . . . . Initial Linear Model ----
+#' ###### Initial Linear Model
+mul_cam1 <- lm(gmv~ .,data=cam_train_log)
+#+ . . . . . . . . Auto-Otimize Model ----
+#' ###### Auto-Optimize Model
+step_mul_cam <- stepAIC(mul_cam1, direction = "both",trace=FALSE)
+summary(step_mul_cam)
+vif(step_mul_cam)
+
+#Remove product_mrp
+mul_cam2 <- lm(formula = gmv ~ list_price + Promotion + cat_luxury + 
+                 cat_mid + cat_premium + TV + OnlineMarketing + Affiliates, 
+               data = cam_train_log)
+summary(mul_cam2)
+vif(mul_cam2)
+
+#Remove TV
+mul_cam3 <- lm(formula = gmv ~ list_price + Promotion + cat_luxury + 
+                 cat_mid + cat_premium + OnlineMarketing + Affiliates, 
+               data = cam_train_log)
+summary(mul_cam3)
+vif(mul_cam3)
+
+#Remove Affiliates
+mul_cam4 <- lm(formula = gmv ~ list_price + Promotion + cat_luxury + 
+                 cat_mid + cat_premium + OnlineMarketing, 
+               data = cam_train_log)
+summary(mul_cam4)
+vif(mul_cam4)
+
+#Remove cat_premium
+mul_cam5 <- lm(formula = gmv ~ list_price + Promotion + cat_mid + 
+                 cat_premium + OnlineMarketing, 
+               data = cam_train_log)
+summary(mul_cam5)
+vif(mul_cam5)
+
+#Test the model on Test Dataset
+pred_cam_mul<-predict(mul_cam5,cam_test_log[,-1])
+
+#Add New column for predicted_gmv
+cam_test_log$predicted_gmv <- pred_cam_mul
+
+#Lets look at the Corr & R2
+cor(cam_test_log$gmv, cam_test_log$predicted_gmv)
+cor(cam_test_log$gmv, cam_test_log$predicted_gmv)^2
