@@ -138,11 +138,15 @@ lines(model_data$gmv)
 lines(pred_lm,col='red',lwd=2)
 lines(ridge_out@pred,col='green',lwd=2)
 lines(lasso_out@pred,col='blue',lwd=2)
-abline(h=step_mdl$coefficients['(Intercept)'],col='red',lwd=2,lty=2)
-abline(h=ridge_out@mdl$a0,col='green',lwd=2,lty=2)
-abline(h=lasso_out@mdl$a0,col='blue',lwd=2,lty=2)
+lines(step_mdl$coefficients['(Intercept)']+step_mdl$coefficients['week']*data_week$week,
+      lty=2,lwd=2,col='red')
+lines(ridge_out@mdl$a0+ridge_out@mdl$beta['week',1]*data_week$week,
+      lty=2,lwd=2,col='green')
+lines(lasso_out@mdl$a0+lasso_out@mdl$beta['week',1]*data_week$week,
+      lty=2,lwd=2,col='blue')
 legend('topright',inset=0, legend=c('GMV','LM','LM+L1','LM+L2'),horiz = TRUE,
        lwd = 2, col=c(1:4), cex = 0.5)
+
 
 #' **Model Coefficients:**
 
