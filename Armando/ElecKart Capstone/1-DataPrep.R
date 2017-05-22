@@ -7,7 +7,8 @@ library(ggplot2)
 library(MASS)
 library(car)
 library(Hmisc)   # describe
-
+library(DataCombine)
+library(zoo)
 # ***************************************************************************
 #                   PROCs ----
 # ***************************************************************************
@@ -21,7 +22,6 @@ nweek <- function(x, format="%Y-%m-%d", origin){
     2 + as.integer(x - o - w) %/% 7
   }
 }
-
 
 
 # ***************************************************************************
@@ -64,6 +64,11 @@ ce_data$List_Price <- as.integer(ce_data$gmv / ce_data$units)
 #....Promotion Variable
 ce_data$Promotion <- as.numeric((ce_data$product_mrp - ce_data$List_Price) / ce_data$product_mrp)
 
+#Clustering for Pricing Category
+price_cluster <-  ce_data[,c(18,19,21)]
+cluster.results <- kmodes(price_cluster, 3, iter.max = 10, weighted = FALSE )
+cluster.output <- cbind(price_cluster,cluster.results$cluster)
+write.csv(cluster.output, file = "kmodes clusters.csv", row.names = TRUE)
 #....Here we have created a Pricing categorical variable
 ce_data$mrp_category[ce_data$product_mrp == 0] <- "Free"
 ce_data$mrp_category[ce_data$product_mrp >= 150001] <- "Luxury"
@@ -203,6 +208,7 @@ gmv_weekly <-  ce_data %>%
   summarise(gmv=sum(gmv))
 write.csv(gmv_weekly, file = "sales.csv",row.names=FALSE)
 
+#Created Adstocks n Excel using solver
 
 # . . . .   Media Adstock ----
 media_adstk      <- 
@@ -216,8 +222,7 @@ media_adstk      <-
 #Weekly aggregation of ce_data
 
 ce_data_weekly <-  ce_data %>% 
-  group_by(mrp_category,
-           product_analytic_sub_category,
+  group_by(product_analytic_sub_category,
            week) %>% 
   summarise(gmv=sum(gmv),
             product_mrp=mean(product_mrp), 
@@ -263,11 +268,10 @@ data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 data_bkp <- data
 
 
-#Removing mrp_category
+#Removing mrp_category & units
 #Keeping weeks, because I am thinking of using that to create our Training & Test Datasets
-data <- data[,-c(2)]
+data <- data[,-c(2,7)]
 quantile(data$product_mrp)
-
 
 # ***************************************************************************
 #           CREATE A NEW DATASET WITH ONLY THE IMP VARIABLES ----

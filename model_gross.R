@@ -6,7 +6,7 @@ library(DataCombine)   # Pair wise correlation
 library(stargazer)
 library(dplyr)         # Data aggregation
 library(glmnet)
-source('./code/atchircUtils.R')
+#source('./code/atchircUtils.R')
 
 
 data    <- read.csv('./intrim/eleckart.csv')
@@ -14,10 +14,11 @@ data    <- read.csv('./intrim/eleckart.csv')
 data_week <- data %>% group_by(week) %>% 
   summarise(gmv=sum(gmv),
             product_mrp=mean(product_mrp),
-            discount=mean(discount),
+            discount=mean(Promotion),
             sla=mean(sla),
             procurement_sla=mean(procurement_sla),
-            n_saledays=mean(n_saledays),
+            n_saledays=mean(sale_days),
+            n_holidays=mean(holidays),
             TV=mean(TV),
             Digital=mean(Digital),
             Sponsorship=mean(Sponsorship),
@@ -26,25 +27,21 @@ data_week <- data %>% group_by(week) %>%
             Affiliates=mean(Affiliates),SEM=mean(SEM),
             Radio=mean(Radio),
             Other=mean(Other),
-            TotalInvestment=mean(TotalInvestment),
             NPS=mean(NPS),
-            list_mrp=mean(list_mrp),
-            units=sum(units),
-            COD=sum(COD),
-            Prepaid=sum(Prepaid))
+            list_price=mean(list_price),
+            units=sum(units))
 
-data_week[,c(8:17)] <- data_week[,c(8:17)]*10000000
+data_week[,c(9:17)] <- data_week[,c(9:17)]*10000000
 
 # Prune, Insignificant variables
 # week, sla, procurement_sla, content.marketing, Total Investment,
 # units, radio, digital, product_mrp, prepaid, n_saledays
-data_week$chnglist <- c(0,diff(data_week$list_mrp))
+data_week$chnglist <- c(0,diff(data_week$list_price))
 data_week$chngdisc <- c(0,diff(data_week$discount))
 data_week$chngNPS <- c(0,diff(data_week$NPS))
 model_data <- subset(data_week, select= -c(product_mrp,sla,procurement_sla,
                               ContentMarketing,Affiliates,discount,
-                              Radio,TotalInvestment,list_mrp,units,NPS,
-                              COD,Prepaid))
+                              list_price,units,NPS))
 
 model_data <- na.omit(model_data)
 
