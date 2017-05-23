@@ -136,8 +136,11 @@ weekdays$fracDays <- weekdays$nweeks/7
 ce_data$product_analytic_vertical <- gsub(" +","",ce_data$product_analytic_vertical)
 
 
+# . . . . Generate List Price ----
+ce_data$list_mrp <- as.integer(ce_data$gmv / ce_data$units)
+
 # . . . . Generate Discount ----
-ce_data$discount <- ((ce_data$product_mrp - ce_data$gmv)/ce_data$product_mrp) * 100
+ce_data$discount <- as.numeric((ce_data$product_mrp - ce_data$list_mrp) / ce_data$product_mrp)
 
 # . . . .  Payment Type ----
 ce_data$COD     = as.integer(ce_data$s1_fact.order_payment_type=='COD')
@@ -220,13 +223,15 @@ mediaInvestment_weekly <-
 # . . . .   SPecialSale ----
 str(specialSale_data)
 #' \vspace{8pt}
-specialSale_data$Date      <- as.Date(specialSale_data$Day, format = "%m/%d/%Y")
-specialSale_data$week      <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
+specialSale_data$Date     <- as.Date(specialSale_data$Date, format = "%m/%d/%Y")
+specialSale_data$week     <- nweek(specialSale_data$Date,origin = as.Date("2015-07-01"))
 specialSale_data           <- data.frame(table(specialSale_data$week))
 colnames(specialSale_data) <- c('week','n_saledays')
 
 
 # . . . .   Monthly NPS ----
+monthlyNPS_data$Date <- as.Date(monthlyNPS_data$Date, format = "%m/%d/%Y")
+monthlyNPS_data$Month <- month(ymd(monthlyNPS_data$Date))
 monthlyNPS_weekly   <- merge(weekdays, monthlyNPS_data, by='Month', all.x = TRUE)
 monthlyNPS_weekly   <- as.data.frame(monthlyNPS_weekly %>% group_by(., week) %>% 
                                               summarise(., NPS = mean(NPS)))
@@ -242,7 +247,8 @@ ce_data_weekly <-  ce_data %>%
   group_by(product_analytic_sub_category,
            week) %>% 
   summarise(gmv=sum(gmv), 
-            product_mrp=mean(product_mrp), 
+            product_mrp=mean(product_mrp),
+            list_mrp=mean(list_mrp),
             units=sum(units),
             discount=mean(discount),
             sla=mean(sla), 
@@ -268,7 +274,7 @@ media_nps <- merge(mediaInvestment_weekly, monthlyNPS_weekly, by = 'week',
 # . . . .   Merge Sales & SaleDays
 data <- merge(ce_data_weekly, specialSale_data, by = 'week', all.x = TRUE)
 data[is.na(data$n_saledays),'n_saledays'] = 0
-# data$Sales.Name[is.na(data$Sales.Name)] <- "No sale"
+
 
 
 #. . . .   Merge Data & Media_NPS
@@ -278,16 +284,14 @@ data <- merge(data, media_nps, by = 'week', all.x = TRUE)
 
 
 # . . . . Discount ----
-data$list_mrp     <- as.integer(data$gmv/data$units)
-data$discount     <- (1-(data$list_mrp/data$product_mrp))*100
-
+data$discount <- (1-(data$list_mrp/data$product_mrp))*100
 
 
 
 # ***************************************************************************
 #                   SAVE DATA  ----
 # ***************************************************************************
-write.csv(data[-1,], file = "./intrim/eleckart.csv",row.names=FALSE)
+write.csv(data, file = "./intrim/eleckart.csv",row.names=FALSE)
 #' \vspace{8pt}
 str(data)
 #' \vspace{8pt}
