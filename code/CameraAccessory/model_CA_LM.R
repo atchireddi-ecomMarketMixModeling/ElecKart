@@ -21,7 +21,7 @@ data    <- read.csv('../../intrim/eleckart.csv')
 # will use marketing levers rather TotalInvestment
 
 # Filter significant KPIs
-model_data <- subset(data, product_analytic_sub_category=='GamingAccessory', 
+model_data <- subset(data, product_analytic_sub_category=='CameraAccessory', 
                      select = -c(product_analytic_sub_category,product_mrp,
                                  units,COD,Prepaid,deliverybdays,
                                  TotalInvestment,Affiliates,Radio,Digital,
@@ -29,6 +29,7 @@ model_data <- subset(data, product_analytic_sub_category=='GamingAccessory',
 
 model_data_org <- model_data
 model_data[,c(8:12)] <- model_data[,c(8:12)]*10000000
+
 
 # # ***************************************************************************
 # #                   FEATURE ENGINEERING -PASS2  ----
@@ -40,12 +41,6 @@ model_data$chnglist <- c(0,diff(model_data$list_mrp))
 # # . . . . Discount Inflation ----
 model_data$chngdisc <- c(0,diff(model_data$discount))
 # 
-
-
-#  . . . . Shift KPI to void NAN ----
-model_data$chngdisc <- min(model_data$chngdisc)*-1+model_data$chngdisc
-model_data$chnglist <- min(model_data$chnglist)*-1+model_data$chnglist
-model_data <- log(model_data+0.01)
 
 
 #' \newpage
@@ -128,8 +123,7 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(list_mrp,discount,NPS,SEM,TV))
-
+model_data <- subset(model_data,select=-c(TV,SEM,discount))
 
 #' **Linear Model:**
 mdl      <- lm(gmv~., data=model_data)
@@ -156,7 +150,7 @@ lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
 #' ****************************************************
 #' \vspace{8pt}
 #' **Plot Model prediction and base sales:**
-plot(model_data$gmv,main = 'GamingAccessory Multiplicative Model - Final',
+plot(model_data$gmv,main = 'CameraAccessory Linear Model - Final',
      xlab='week',ylab='PredictGMV')
 lines(model_data$gmv)
 lines(pred_lm,col='red',lwd=2)
@@ -194,7 +188,7 @@ print(smry)
 
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
-print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
+print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
 
 
 #' \newpage
@@ -212,46 +206,47 @@ print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
 
 # Model Optimization
 
-# ---- pass1 : skip list_mrp, discount
+# ---- pass1 : skip TV
 
-# coeff           lm            l1            l2
-# 1      (Intercept) -332.0142120 -5.322028e+01 -2.905734e+02
-# 2         chngdisc           NA  1.107040e-01  8.004271e-02
-# 3         chnglist           NA  4.434794e-02  1.756825e-02
-# 4    deliverycdays   -0.1975143 -7.428395e-02 -2.090531e-01
-# 5         discount           NA  1.557640e-01 -8.272879e-02
-# 6         list_mrp    2.2948399  1.916853e+00  2.366514e+00
-# 7       n_saledays           NA  4.470193e-02  3.123002e-02
-# 8              NPS   12.9063465  6.192292e-01  1.094970e+01
-# 9  OnlineMarketing    2.0129209  7.007947e-01  1.873418e+00
-# 10           Other           NA  1.140407e-04 -3.010035e-03
-# 11             SEM           NA -1.815867e-01 -1.306520e-01
-# 12     Sponsorship    0.4301544  3.650940e-01  4.939484e-01
-# 13              TV   -0.7051764  1.073186e-01 -6.969991e-01
-# 14            week           NA  3.916041e-02  7.716228e-02
-# [1] "Ridge regression R2 : 0.853917656694855"
-# [1] "Lasso regression R2 : 0.903160612334482"
-# [1] "Multiple R-squared:  0.8981,\tAdjusted R-squared:  0.8848 "
-# [1] " Linear regression R2 : Multiple R-squared:  0.8981,\tAdjusted R-squared:  0.8848 "
-# > 
-
+# coeff            lm            l1            l2
+# 1      (Intercept) -4.205266e+06  3.743013e+06 -2.335133e+06
+# 2         chngdisc            NA  3.544890e+04  2.297922e+04
+# 3         chnglist            NA  1.274977e-05 -2.125097e-06
+# 4    deliverycdays            NA  1.399561e+05  9.078950e+04
+# 5         discount  6.485938e+04  6.976909e+03  2.857188e+04
+# 6         list_mrp  3.520229e-04  2.898529e-04  3.339852e-04
+# 7       n_saledays  2.494251e+05  2.376959e+05  2.589315e+05
+# 8              NPS            NA -8.022442e-03  0.000000e+00
+# 9  OnlineMarketing  4.147731e-02  2.946905e-02  4.207859e-02
+# 10           Other            NA  6.919302e-03  1.216733e-02
+# 11             SEM -5.362909e-02 -3.241843e-02 -4.862319e-02
+# 12     Sponsorship  2.619984e+05  2.082814e+05  2.920367e+05
+# 13              TV            NA -1.952227e+05 -5.558398e+05
+# 14            week            NA -6.411466e+03 -1.947268e+03
+# [1] "Ridge regression R2 : 0.635910648911486"
+# [1] "Lasso regression R2 : 0.648390286764186"
+# [1] "Multiple R-squared:  0.6301,\tAdjusted R-squared:  0.5808 "
+# [1] "Linear Mode      R2 : 
+#         Multiple R-squared:  0.6301,\tAdjusted R-squared:  0.5808 "
 
 # ---- pass1 :  will go with L1 model, which has meaningful coefficients
 
-# coeff          lm           l1           l2
-# 1     (Intercept) -6.97087993 -2.150541579 -6.442218984
-# 2        chngdisc          NA  0.122701323  0.130651337
-# 3        chnglist  0.06423205  0.089125319  0.066207395
-# 4   deliverycdays  0.09825014  0.017955528  0.090495968
-# 5      n_saledays          NA  0.015064195  0.027143742
-# 6 OnlineMarketing  1.30262192  0.838938181  1.224295868
-# 7           Other          NA  0.003392487 -0.003729358
-# 8     Sponsorship          NA  0.351635745  0.132331160
-# 9            week -0.60235066 -0.158392343 -0.547897175
-# [1] "Ridge regression R2 : 0.825648088983028"
-# [1] "Lasso regression R2 : 0.843308759957358"
-# [1] "Multiple R-squared:  0.8348,\tAdjusted R-squared:  0.8211 "
-# [1] " Linear regression R2 : 
-#          Multiple R-squared:  0.8348,\tAdjusted R-squared:  0.8211 "
-
+# coeff            lm            l1            l2
+# 1      (Intercept) -1.508753e+06  2.042501e+06 -2.805416e+06
+# 2         chngdisc  4.816911e+04  4.513849e+04  4.861658e+04
+# 3         chnglist            NA  7.272228e-06 -1.891686e-05
+# 4    deliverycdays  1.875128e+05  1.656200e+05  2.500288e+05
+# 5         list_mrp  3.709176e-04  3.277707e-04  3.945720e-04
+# 6       n_saledays  2.473153e+05  2.318695e+05  2.592140e+05
+# 7              NPS            NA -5.349811e-03  1.912645e-03
+# 8  OnlineMarketing  3.529442e-02  2.337185e-02  3.179100e-02
+# 9            Other            NA  7.735092e-03  1.246340e-02
+# 10     Sponsorship  1.453657e+05  1.416823e+05  1.662989e+05
+# 11            week            NA  9.151802e+02 -4.788093e+03
+# [1] "Ridge regression R2 : 0.602792651908966"
+# [1] "Lasso regression R2 : 0.607259895391884"
+# [1] "Multiple R-squared:  0.6017,\tAdjusted R-squared:  0.5486 "
+# [1] "Linear Mode      R2 : 
+#         Multiple R-squared:  0.6017,\tAdjusted R-squared:  0.5486 "
+# > 
 

@@ -6,10 +6,10 @@ library(DataCombine)   # Pair wise correlation
 library(stargazer)
 library(dplyr)         # Data aggregation
 library(glmnet)
-source('./code/atchircUtils.R')
+source('../atchircUtils.R')
 
 
-data    <- read.csv('./intrim/eleckart.csv')
+data    <- read.csv('../../intrim/eleckart.csv')
 
 
 # KPI selection
@@ -21,7 +21,7 @@ data    <- read.csv('./intrim/eleckart.csv')
 # will use marketing levers rather TotalInvestment
 
 # Filter significant KPIs
-model_data <- subset(data, product_analytic_sub_category=='CameraAccessory', 
+model_data <- subset(data, product_analytic_sub_category=='GamingAccessory', 
                      select = -c(product_analytic_sub_category,product_mrp,
                                  units,COD,Prepaid,deliverybdays,
                                  TotalInvestment,Affiliates,Radio,Digital,
@@ -41,16 +41,6 @@ model_data$chnglist <- c(0,diff(model_data$list_mrp))
 # # . . . . Discount Inflation ----
 model_data$chngdisc <- c(0,diff(model_data$discount))
 # 
-# # . . . . NPS Inflation ----
-# data$chngNPS  <- c(0,diff(data$NPS))
-
-# # . . . . Lag List Price ----
-# # Lag avg weekly list_mrp by 1 week
-# data$lagListMrp <- data.table::shift(data$list_mrp)
-
-# # . . . . Lag Discount ----
-# # Lag weekly avg discount by 1 week
-# model_data$lagDiscount <- data.table::shift(model_data$discount)
 
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
@@ -148,7 +138,7 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(adTV,discount))
+model_data <- subset(model_data,select=-c(list_mrp,adTV,adSEM,NPS))
 # dim(model_data)
 
 #' **Linear Model:**
@@ -176,7 +166,7 @@ lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
 #' ****************************************************
 #' \vspace{8pt}
 #' **Plot Model prediction and base sales:**
-plot(model_data$gmv,main = 'GamingAccessory Linear Model with AdStock',
+plot(model_data$gmv,main = 'GamingAccessory Linear Model with AdStock - Final',
      xlab='week',ylab='PredictGMV')
 lines(model_data$gmv)
 lines(pred_lm,col='red',lwd=2)
@@ -212,8 +202,9 @@ smry <- merge(smry,l2_df,all=TRUE)
 
 print(smry)
 
-ridge_out@R2
-lasso_out@R2
+print(paste0('Ridge regression R2 : ',ridge_out@R2))
+print(paste0('Lasso regression R2 : ',lasso_out@R2))
+print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
 
 
 #' \newpage
@@ -231,52 +222,45 @@ lasso_out@R2
 
 # Model Optimization
 
-# ---- pass1 : skip TV
+# ---- pass1 : skip TV,SEM,NPS,list_mrp
 
-# > print(smry)
-# coeff            lm            l1            l2
-# 1      (Intercept) -4.141661e+05  7.485367e+06  5.445941e+06
-# 2         chngdisc  3.675078e+04  3.822982e+04  3.512998e+04
-# 3         chnglist            NA  3.339202e-05  1.957373e-05
-# 4    deliverycdays            NA  1.746820e+05  1.439615e+05
-# 5      lagDiscount            NA  2.456224e+02  0.000000e+00
-# 6         list_mrp  2.891784e-04  2.281347e-04  2.375811e-04
-# 7       n_saledays  2.364662e+05  2.287571e+05  2.452622e+05
-# 8              NPS            NA -1.243857e-02 -9.128712e-03
-# 9  OnlineMarketing  3.873164e-02  2.444765e-02  2.941981e-02
-# 10           Other            NA  6.323748e-03  8.512118e-03
-# 11             SEM -4.976103e-02 -3.362561e-02 -4.682283e-02
-# 12     Sponsorship  2.616487e+05  1.975294e+05  2.590272e+05
-# 13              TV            NA -1.632189e+05 -3.544065e+05
-# 14            week            NA -1.617192e+04 -1.343278e+04
-# 
-# > ridge_out@R2
-# [1] 0.6085013
-# 
-# > lasso_out@R2
-# [1] 0.6179322
+# coeff           lm           l1           l2
+# 1        (Intercept) 1.521518e+06 5.227609e+05 4.182997e+05
+# 2  adOnlineMarketing 1.746177e-02 9.099769e-03 8.468539e-03
+# 3            adOther           NA 6.183418e-03 7.165210e-03
+# 4      adSponsorship 3.064495e+04 4.809943e+04 5.300454e+04
+# 5           chngdisc 4.244833e+04 3.194748e+04 3.381739e+04
+# 6           chnglist 1.134451e-04 9.199252e-05 9.642221e-05
+# 7      deliverycdays           NA 6.655708e+04 7.115827e+04
+# 8           discount           NA 1.365110e+04 1.435628e+04
+# 9         n_saledays           NA 5.432234e+04 5.712563e+04
+# 10              week           NA 1.457750e+04 1.530543e+04
+# [1] "Ridge regression R2 : 0.512304483802246"
+# [1] "Lasso regression R2 : 0.513607064233856"
+# [1] "Multiple R-squared:  0.4767,\tAdjusted R-squared:  0.4331 "
+# [1] " Linear regression R2 : 
+#        Multiple R-squared:  0.4767,\tAdjusted R-squared:  0.4331 "
+
 
 # ---- pass1 :  will go with L1 model, which has meaningful coefficients
 
 # > print(smry)
-# coeff            lm            l1            l2
-# 1      (Intercept) -4.205266e+06  4.040125e+06 -8.028449e+05
-# 2         chngdisc            NA  3.668112e+04  2.865168e+04
-# 3         chnglist            NA  1.307862e-05 -1.342156e-05
-# 4    deliverycdays            NA  1.674507e+05  2.858037e+05
-# 5         discount  6.485938e+04  4.264987e+03  1.740505e+04
-# 6         list_mrp  3.520229e-04  2.894513e-04  3.374212e-04
-# 7       n_saledays  2.494251e+05  2.388797e+05  2.790864e+05
-# 8              NPS            NA -8.325645e-03 -1.686547e-03
-# 9  OnlineMarketing  4.147731e-02  2.798093e-02  4.127429e-02
-# 10           Other            NA  5.322069e-03  1.045713e-02
-# 11             SEM -5.362909e-02 -3.166888e-02 -5.042236e-02
-# 12     Sponsorship  2.619984e+05  1.970039e+05  2.635711e+05
-# 13            week            NA -9.303619e+03 -2.571906e+04
+# coeff           lm           l1           l2
+# 1        (Intercept) 1.521518e+06 5.114755e+05 4.143994e+05
+# 2  adOnlineMarketing 1.746177e-02 9.065892e-03 8.460501e-03
+# 3            adOther           NA 6.264452e-03 7.181187e-03
+# 4      adSponsorship 3.064495e+04 4.848377e+04 5.305113e+04
+# 5           chngdisc 4.244833e+04 3.211148e+04 3.381321e+04
+# 6           chnglist 1.134451e-04 9.246335e-05 9.650508e-05
+# 7      deliverycdays           NA 6.725724e+04 7.149166e+04
+# 8           discount           NA 1.374273e+04 1.441083e+04
+# 9         n_saledays           NA 5.462490e+04 5.728148e+04
+# 10              week           NA 1.461502e+04 1.530895e+04
 # 
 # > ridge_out@R2
-# [1] 0.633043
+# [1] 0.5125068
 # 
 # > lasso_out@R2
-# [1] 0.6435931
+# [1] 0.513612
+
 
