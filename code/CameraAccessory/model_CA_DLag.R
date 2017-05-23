@@ -138,7 +138,8 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(TV,SEM,discount,lagTV,lagSEM,lagdiscount))
+model_data <- subset(model_data,select=-c(TV,SEM,discount,lagTV,lagSEM,lagdiscount,
+                                          list_mrp,laglist_mrp,NPS,lagNPS))
 
 
 #' **Linear Model:**
@@ -285,5 +286,5 @@ print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
 # [1] "Lasso regression R2 : 0.611020467029655"
 # [1] "Multiple R-squared:  0.5834,\tAdjusted R-squared:  0.5371 "
 # [1] "Linear Mode      R2 : 
-#         Multiple R-squared:  0.5834,\tAdjusted R-squared:  0.5371 "
+#           Multiple R-squared:  0.5834,\tAdjusted R-squared:  0.5371 "
 
