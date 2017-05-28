@@ -6,7 +6,7 @@ library(DataCombine)   # Pair wise correlation
 library(stargazer)
 library(dplyr)         # Data aggregation
 library(glmnet)
-source('../atchircUtils.R')
+source('./atchircUtils.R')
 
 
 data    <- read.csv('./intrim/eleckart.csv')
@@ -45,23 +45,32 @@ model_data$chngdisc <- c(0,diff(model_data$discount))
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
 # Prune regular
-model_data <- subset(model_data,select = -c(TV,Sponsorship,
-                                            OnlineMarketing,
-                                            SEM,Other))
- 
+model_data <- subset(model_data,select = -c(TV))
+
 # # . . . . Lag GMV ----
 # # Lag weekly avg discount by 1 week
 model_data$laggmv <- data.table::shift(model_data$gmv)
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
 
 
 
@@ -145,7 +154,7 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(NPS,list_mrp,discount))
+model_data <- subset(model_data,select=-c(SEM,list_mrp,NPS,discount))
 
 
 #' **Linear Model:**
@@ -165,6 +174,16 @@ y = as.vector(model_data$gmv)
 
 ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
+
+
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
+
 
 
 #' \newpage
@@ -207,38 +226,16 @@ colnames(l2_df) <- c('coeff','l2')
 smry <- merge(lm_df,l1_df,all = TRUE)
 smry <- merge(smry,l2_df,all=TRUE)
 
-print('********koyck**********')
 print(smry)
 
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
-print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
+print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
 
 
 #' \newpage
 #' *****************************************************
 #'           Significant KPI
 #' ****************************************************
-
-
-#coeff            lm            l1            l2
-#1        (Intercept)  1.610585e+06  1.579497e+06  1.704390e+06
-#2  adOnlineMarketing  1.847728e-02  1.405602e-02  1.950633e-02
-#3            adOther  9.377063e-03  6.505827e-03  1.019389e-02
-#4              adSEM -2.791111e-02 -1.614059e-02 -2.827647e-02
-#5      adSponsorship  1.252362e-02  7.963808e-03  1.256442e-02
-#6               adTV -3.871930e+05 -1.678232e+05 -3.664399e+05
-#7           chngdisc  3.517065e+04  3.745786e+04  3.525944e+04
-#8           chnglist            NA  7.907351e+02  7.168335e+02
-#9      deliverycdays            NA  5.538189e+04  7.696731e+04
-#10            laggmv            NA  6.517790e-02 -3.284229e-02
-#11        n_saledays            NA  6.816871e+04  7.219565e+04
-#12              week            NA -2.224492e+03 -9.187108e+03
-
-#[1] "Ridge regression R2 : 0.557954744604513"
-
-#[1] "Lasso regression R2 : 0.580687778768009"
-
-#[1] "Multiple R-squared:  0.5586,\tAdjusted R-squared:  0.4998 "
-#[1] " Linear regression R2 : Multiple R-squared:  0.5586,\tAdjusted R-squared:  0.4998 "
 

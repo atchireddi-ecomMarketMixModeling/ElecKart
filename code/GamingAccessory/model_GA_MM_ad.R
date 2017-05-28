@@ -2,14 +2,14 @@
 #+ warning=FALSE, message=FALSE
 library(MASS)
 library(car)
-library(DataCombine)   # Pair wise correlation
+# library(DataCombine)   # Pair wise correlation
 library(stargazer)
 library(dplyr)         # Data aggregation
 library(glmnet)
-source('../atchircUtils.R')
+source('./atchircUtils.R')
 
 
-data    <- read.csv('../../intrim/eleckart.csv')
+data    <- read.csv('./intrim/eleckart.csv')
 
 
 # KPI selection
@@ -40,27 +40,40 @@ model_data$chnglist <- c(0,diff(model_data$list_mrp))
 # # . . . . Discount Inflation ----
 model_data$chngdisc <- c(0,diff(model_data$discount))
 # 
+
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
 # Prune regular
-model_data <- subset(model_data,select = -c(TV,Sponsorship,
-                                            OnlineMarketing,
-                                            SEM,Other))
+# model_data <- subset(model_data,select = -c(TV,Sponsorship,
+#                                             OnlineMarketing,
+#                                             SEM,Other))
 
-#  . . . . Shift KPI to void NAN ----
+model_data <- subset(model_data,select = -c(TV))
+
 model_data$chngdisc <- min(model_data$chngdisc)*-1+model_data$chngdisc
 model_data$chnglist <- min(model_data$chnglist)*-1+model_data$chnglist
 model_data <- log(model_data+0.01)
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
 
 
 #' \newpage
@@ -165,13 +178,22 @@ ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
 
 
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
+
+
 #' \newpage
 #' *****************************************************
 #'           PLOTTING MODEL RESULTS
 #' ****************************************************
 #' \vspace{8pt}
 #' **Plot Model prediction and base sales:**
-plot(model_data$gmv,main = 'GamingAccessory Multiplicative Model - Final',
+plot(model_data$gmv,main = 'GamingAccessory Multiplicative Model - Pass1',
      xlab='week',ylab='PredictGMV')
 lines(model_data$gmv)
 lines(pred_lm,col='red',lwd=2)
@@ -209,34 +231,13 @@ print(smry)
 
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
-print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
+print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
+
 
 
 #' \newpage
 #' *****************************************************
 #'           Significant KPI
 #' ****************************************************
-
-
-#coeff           lm          l1           l2
-#1        (Intercept) -18.72175671 -5.18701183 -18.78910697
-#2  adOnlineMarketing   1.99239654  0.72962008   1.91345032
-#3            adOther   0.04125158  0.03165738   0.04242279
-#4              adSEM  -0.95752121 -0.32364516  -0.96558644
-#5      adSponsorship   0.94291221  0.65582589   1.01159268
-#6               adTV  -0.62101656  0.19948049  -0.58772491
-#7           chngdisc           NA  0.11157837   0.07573977
-#8           chnglist   0.14079337  0.23155029   0.15013964
-#9      deliverycdays           NA -0.01780922  -0.01096161
-#10        n_saledays           NA  0.01184979   0.03581902
-#11              week  -1.37462304 -0.63212794  -1.34940817
-
-#[1] "Ridge regression R2 : 0.779464503193037"
-
-#[1] "Lasso regression R2 : 0.823654548082647"
-
-#[1] "Multiple R-squared:  0.8194,\tAdjusted R-squared:  0.7913 "
-
-#[1] " Linear regression R2 : Multiple R-squared:  0.8194,\tAdjusted R-squared:  0.7913 "
-
 

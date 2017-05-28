@@ -6,10 +6,10 @@ library(DataCombine)   # Pair wise correlation
 library(stargazer)
 library(dplyr)         # Data aggregation
 library(glmnet)
-source('../atchircUtils.R')
+source('./atchircUtils.R')
 
 
-data    <- read.csv('../../intrim/eleckart.csv')
+data    <- read.csv('./intrim/eleckart.csv')
 
 
 # KPI selection
@@ -45,18 +45,32 @@ model_data$chngdisc <- c(0,diff(model_data$discount))
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
-model_data <- subset(model_data,select = -c(TV,Sponsorship,
-                                            OnlineMarketing,
-                                            SEM,Other))
+# model_data <- subset(model_data,select = -c(TV,Sponsorship,
+#                                             OnlineMarketing,
+#                                             SEM,Other))
+
+model_data <- subset(model_data,select = -c(TV))
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
+ 
 
 #' \newpage
 #' **************************************************************
@@ -138,8 +152,7 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(list_mrp,adTV,adSEM,NPS))
-# dim(model_data)
+model_data <- subset(model_data,select=-c(discount,SEM,NPS,list_mrp))
 
 #' **Linear Model:**
 mdl      <- lm(gmv~., data=model_data)
@@ -158,6 +171,15 @@ y = as.vector(model_data$gmv)
 
 ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
+
+
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
 
 
 #' \newpage
@@ -204,7 +226,9 @@ print(smry)
 
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
-print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
+print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
+
 
 
 #' \newpage
@@ -212,55 +236,5 @@ print(paste0(' Linear regression R2 : ',getModelR2(step_mdl)))
 #'           Significant KPI
 #' ****************************************************
 
-#' Lasso(LM+L1) regression results a simple explainable model
-#' with significant KPIs as
-#' `Discount Inflation`, `Deliverycday`, `sale days`, `Sponsorship`
-#' `Discount`, `week`, `NPS`
-
-
-
-
-# Model Optimization
-
-# ---- pass1 : skip TV,SEM,NPS,list_mrp
-
-# coeff           lm           l1           l2
-# 1        (Intercept) 1.521518e+06 5.227609e+05 4.182997e+05
-# 2  adOnlineMarketing 1.746177e-02 9.099769e-03 8.468539e-03
-# 3            adOther           NA 6.183418e-03 7.165210e-03
-# 4      adSponsorship 3.064495e+04 4.809943e+04 5.300454e+04
-# 5           chngdisc 4.244833e+04 3.194748e+04 3.381739e+04
-# 6           chnglist 1.134451e-04 9.199252e-05 9.642221e-05
-# 7      deliverycdays           NA 6.655708e+04 7.115827e+04
-# 8           discount           NA 1.365110e+04 1.435628e+04
-# 9         n_saledays           NA 5.432234e+04 5.712563e+04
-# 10              week           NA 1.457750e+04 1.530543e+04
-# [1] "Ridge regression R2 : 0.512304483802246"
-# [1] "Lasso regression R2 : 0.513607064233856"
-# [1] "Multiple R-squared:  0.4767,\tAdjusted R-squared:  0.4331 "
-# [1] " Linear regression R2 : 
-#        Multiple R-squared:  0.4767,\tAdjusted R-squared:  0.4331 "
-
-
-# ---- pass1 :  will go with L1 model, which has meaningful coefficients
-
-# > print(smry)
-# coeff           lm           l1           l2
-# 1        (Intercept) 1.521518e+06 5.114755e+05 4.143994e+05
-# 2  adOnlineMarketing 1.746177e-02 9.065892e-03 8.460501e-03
-# 3            adOther           NA 6.264452e-03 7.181187e-03
-# 4      adSponsorship 3.064495e+04 4.848377e+04 5.305113e+04
-# 5           chngdisc 4.244833e+04 3.211148e+04 3.381321e+04
-# 6           chnglist 1.134451e-04 9.246335e-05 9.650508e-05
-# 7      deliverycdays           NA 6.725724e+04 7.149166e+04
-# 8           discount           NA 1.374273e+04 1.441083e+04
-# 9         n_saledays           NA 5.462490e+04 5.728148e+04
-# 10              week           NA 1.461502e+04 1.530895e+04
-# 
-# > ridge_out@R2
-# [1] 0.5125068
-# 
-# > lasso_out@R2
-# [1] 0.513612
-
+# > 
 
