@@ -45,18 +45,32 @@ model_data$chngdisc <- c(0,diff(model_data$discount))
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
-model_data <- subset(model_data,select = -c(TV,Sponsorship,
-                                            OnlineMarketing,
-                                            SEM,Other))
+# model_data <- subset(model_data,select = -c(TV,Sponsorship,
+#                                             OnlineMarketing,
+#                                             SEM,Other))
+
+model_data <- subset(model_data,select = -c(TV))
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
+ 
 
 #' \newpage
 #' **************************************************************
@@ -138,8 +152,7 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(adTV,discount,adSEM,NPS,list_mrp))
-# model_data <- subset(model_data,select=-c(adTV,discount,adSEM))
+model_data <- subset(model_data,select=-c(adTV,discount,SEM,NPS,list_mrp))
 
 #' **Linear Model:**
 mdl      <- lm(gmv~., data=model_data)
@@ -158,6 +171,15 @@ y = as.vector(model_data$gmv)
 
 ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
+
+
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
 
 
 #' \newpage
@@ -205,6 +227,7 @@ print(smry)
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
 print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
 
 
 

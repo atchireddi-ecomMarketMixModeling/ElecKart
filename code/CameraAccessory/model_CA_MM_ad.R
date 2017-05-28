@@ -44,14 +44,14 @@ model_data$chngdisc <- c(0,diff(model_data$discount))
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
 # Prune regular
 model_data <- subset(model_data,select = -c(TV,Sponsorship,
@@ -62,6 +62,17 @@ model_data <- subset(model_data,select = -c(TV,Sponsorship,
 model_data$chngdisc <- min(model_data$chngdisc)*-1+model_data$chngdisc
 model_data$chnglist <- min(model_data$chnglist)*-1+model_data$chnglist
 model_data <- log(model_data+0.01)
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
 
 
 #' \newpage
@@ -166,6 +177,15 @@ ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
 
 
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
+
+
 #' \newpage
 #' *****************************************************
 #'           PLOTTING MODEL RESULTS
@@ -211,6 +231,7 @@ print(smry)
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
 print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
 
 
 

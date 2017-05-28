@@ -45,19 +45,17 @@ model_data$chngdisc <- c(0,diff(model_data$discount))
 # # . . . . Ad Stock ----
 model_data$adTV               <- as.numeric(
   stats::filter(model_data$TV,filter=0.5,method='recursive'))
-model_data$adSponsorship      <- as.numeric(
-  stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
-model_data$adOnlineMarketing  <- as.numeric(
-  stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
-model_data$adSEM              <- as.numeric(
-  stats::filter(model_data$SEM,filter=0.5,method='recursive'))
-model_data$adOther            <- as.numeric(
-  stats::filter(model_data$Other,filter=0.5,method='recursive'))
+# model_data$adSponsorship      <- as.numeric(
+#   stats::filter(model_data$Sponsorship,filter=0.5,method='recursive'))
+# model_data$adOnlineMarketing  <- as.numeric(
+#   stats::filter(model_data$OnlineMarketing,filter=0.5,method='recursive'))
+# model_data$adSEM              <- as.numeric(
+#   stats::filter(model_data$SEM,filter=0.5,method='recursive'))
+# model_data$adOther            <- as.numeric(
+#   stats::filter(model_data$Other,filter=0.5,method='recursive'))
 
 # Prune regular
-model_data <- subset(model_data,select = -c(TV,Sponsorship,
-                                            OnlineMarketing,
-                                            SEM,Other))
+model_data <- subset(model_data,select = -c(TV))
 
 
 # # . . . . Lag independant variables----
@@ -66,14 +64,28 @@ model_data$laggmv             <- data.table::shift(model_data$gmv)
 model_data$lagdiscount        <- data.table::shift(model_data$discount)
 model_data$lagdeliverycdays   <- data.table::shift(model_data$deliverycdays)
 model_data$lagadTV            <- data.table::shift(model_data$adTV)
-model_data$lagadSponsorship   <- data.table::shift(model_data$adSponsorship)
-model_data$lagadOnlineMar     <- data.table::shift(model_data$adOnlineMarketing)
-model_data$lagadSEM           <- data.table::shift(model_data$adSEM)
-model_data$lagadOther         <- data.table::shift(model_data$adOther)
+model_data$lagSponsorship     <- data.table::shift(model_data$Sponsorship)
+model_data$lagOnlineMar       <- data.table::shift(model_data$OnlineMarketing)
+model_data$lagSEM             <- data.table::shift(model_data$SEM)
+model_data$lagOther           <- data.table::shift(model_data$Other)
 model_data$lagNPS             <- data.table::shift(model_data$NPS)
 model_data$laglist_mrp        <- data.table::shift(model_data$list_mrp)
 model_data$lagChnglist        <- data.table::shift(model_data$chnglist)
 model_data$lagChngdisc        <- data.table::shift(model_data$chngdisc)
+
+
+
+# # ***************************************************************************
+# #                   TRAIN and TEST Data  ----
+# # ***************************************************************************
+
+
+test_data <- model_data[c(43:52),-2]
+test_value <- model_data[c(43:52),2]
+
+model_data <- model_data[-c(43:52),]
+
+
 
 
 #' \newpage
@@ -156,8 +168,8 @@ atcLmReg <- function(x,y,l1l2,folds) {
 
 # Prune KPI as part of model optimization
 model_data <- na.omit(model_data)
-model_data <- subset(model_data,select=-c(lagadTV,lagadSEM,discount,lagdiscount,
-                                          list_mrp,laglist_mrp,NPS,lagNPS,adTV,adSEM))
+model_data <- subset(model_data,select=-c(lagadTV,lagSEM,discount,lagdiscount,
+                                          list_mrp,laglist_mrp,NPS,lagNPS,adTV,SEM))
 
 
 #' **Linear Model:**
@@ -177,6 +189,18 @@ y = as.vector(model_data$gmv)
 
 ridge_out <- atcLmReg(x,y,0,3)  # x, y, alpha, nfolds
 lasso_out <- atcLmReg(x,y,1,3)  # x, y, alpha, nfolds
+
+
+
+#' *****************************************************
+#'           Model Accuracy
+#' ****************************************************
+ypred <- predict(step_mdl,new=test_data)
+# MSE 
+mean((ypred-test_value)^2)
+predR2 <- 1 - (sum((test_value-ypred )^2)/sum((test_value-mean(ypred))^2))
+
+
 
 
 #' \newpage
@@ -224,6 +248,7 @@ print(smry)
 print(paste0('Ridge regression R2 : ',ridge_out@R2))
 print(paste0('Lasso regression R2 : ',lasso_out@R2))
 print(paste0('Linear Mode      R2 : ',getModelR2(step_mdl)))
+print(paste0('Predicted        R2 : ',predR2))
 
 
 #' \newpage
